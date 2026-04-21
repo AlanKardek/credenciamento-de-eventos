@@ -41,6 +41,7 @@ export default function EventDetailsPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showParticipants, setShowParticipants] = useState(false);
 
   useEffect(() => {
     const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) || "";
@@ -161,9 +162,9 @@ export default function EventDetailsPage() {
   const LineChart = ({ data }: { data: typeof timelineData }) => {
     if (data.length === 0) return null;
 
-    const width = 500;
-    const height = 250;
-    const padding = 40;
+    const width = 400;
+    const height = 180;
+    const padding = 35;
     const maxValue = Math.max(...data.map(d => d.accumulated), 1);
 
     const points = data.map((d, i) => {
@@ -175,45 +176,45 @@ export default function EventDetailsPage() {
     return (
       <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="w-full">
         {/* Grid */}
-        {[0, 1, 2, 3, 4].map(i => (
+        {[0, 1, 2, 3].map(i => (
           <line
             key={`grid-${i}`}
             x1={padding}
-            y1={padding + (i * (height - padding * 2)) / 4}
+            y1={padding + (i * (height - padding * 2)) / 3}
             x2={width - padding}
-            y2={padding + (i * (height - padding * 2)) / 4}
+            y2={padding + (i * (height - padding * 2)) / 3}
             stroke="#34394a"
             strokeWidth="1"
-            strokeDasharray="4"
+            strokeDasharray="3"
           />
         ))}
 
         {/* Eixos */}
-        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#566575" strokeWidth="2" />
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#566575" strokeWidth="2" />
+        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#566575" strokeWidth="1.5" />
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#566575" strokeWidth="1.5" />
 
         {/* Linha */}
         <polyline
           points={points.map(p => `${p.x},${p.y}`).join(' ')}
           fill="none"
           stroke="#2f61ff"
-          strokeWidth="2"
+          strokeWidth="1.5"
         />
 
         {/* Pontos */}
         {points.map((p, i) => (
-          <circle key={`point-${i}`} cx={p.x} cy={p.y} r="4" fill="#2f61ff" />
+          <circle key={`point-${i}`} cx={p.x} cy={p.y} r="3" fill="#2f61ff" />
         ))}
 
-        {/* Labels do eixo X */}
+        {/* Labels */}
         {points.map((p, i) => (
-          i % Math.ceil(points.length / 5) === 0 && (
+          i % Math.max(Math.ceil(points.length / 3), 1) === 0 && (
             <text
               key={`label-${i}`}
               x={p.x}
-              y={height - padding + 20}
+              y={height - padding + 15}
               textAnchor="middle"
-              fontSize="12"
+              fontSize="10"
               fill="#8f96a8"
             >
               {p.date}
@@ -229,9 +230,9 @@ export default function EventDetailsPage() {
     if (data.length === 0) return null;
 
     const total = data.reduce((sum, item) => sum + item.value, 0);
-    const radius = 80;
-    const cx = 120;
-    const cy = 100;
+    const radius = 60;
+    const cx = 90;
+    const cy = 75;
 
     let currentAngle = -Math.PI / 2;
     const slices = data.map((item, index) => {
@@ -253,27 +254,27 @@ export default function EventDetailsPage() {
     });
 
     return (
-      <div className="flex items-center gap-6">
-        <svg width="250" height="200" viewBox="0 0 250 200" className="flex-shrink-0">
+      <div className="flex items-center gap-4">
+        <svg width="180" height="150" viewBox="0 0 180 150" className="flex-shrink-0">
           {slices.map((slice, i) => (
             <path
               key={`slice-${i}`}
               d={slice.path}
               fill={slice.color}
               stroke="#111318"
-              strokeWidth="2"
+              strokeWidth="1"
             />
           ))}
         </svg>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1">
           {slices.map((slice, i) => (
-            <div key={`legend-${i}`} className="flex items-center gap-2 text-sm">
+            <div key={`legend-${i}`} className="flex items-center gap-2 text-xs">
               <div
-                className="w-3 h-3 rounded-full flex-shrink-0"
+                className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: slice.color }}
               />
-              <span className="text-[#b8bfd1]">{slice.name}</span>
-              <span className="text-[#8f96a8] ml-auto">
+              <span className="text-[#b8bfd1] flex-1">{slice.name}</span>
+              <span className="text-[#8f96a8]">
                 {slice.value} ({Math.round((slice.value / total) * 100)}%)
               </span>
             </div>
@@ -285,175 +286,163 @@ export default function EventDetailsPage() {
 
   return (
     <main className="min-h-screen bg-[#111318] text-white">
-      <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
-        <div className="mb-6 flex justify-between items-center">
-          <Link href="/" className="rounded-md border border-[#3f4658] bg-[#232834] px-4 py-2 text-sm text-[#d3d8e4] hover:bg-[#2a3040]">
-            Voltar para dashboard
+      <div className="mx-auto max-w-6xl px-3 py-3 md:px-4">
+        <div className="mb-3 flex justify-between items-center gap-2">
+          <Link href="/" className="rounded-md border border-[#3f4658] bg-[#232834] px-2.5 py-1 text-xs text-[#d3d8e4] hover:bg-[#2a3040] whitespace-nowrap">
+            ← Voltar
           </Link>
-          {!loading && !error && event && (
-            <button
-              onClick={() => router.push(`/eventos/${eventId}/editar`)}
-              className="inline-flex items-center gap-2 rounded-md border border-[#2f61ff] bg-[#1b2f7a] px-4 py-2 text-sm font-semibold text-[#dbe6ff] hover:bg-[#203a95]"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M3 17.25V21h3.75L17.81 9.94m-4.51-4.51l2.83-2.83c.39-.39 1.02-.39 1.41 0l2.83 2.83c.39.39.39 1.02 0 1.41l-2.83 2.83" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span>Editar evento</span>
-            </button>
-          )}
+          <div className="flex gap-1.5">
+            {!loading && !error && event && (
+              <button
+                onClick={() => setShowParticipants(!showParticipants)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#3f4658] bg-[#232834] px-2.5 py-1 text-xs text-[#d3d8e4] hover:bg-[#2a3040]"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0z" stroke="currentColor" strokeWidth="1.5"/>
+                </svg>
+                <span>Participantes ({totalParticipants})</span>
+              </button>
+            )}
+            {!loading && !error && event && (
+              <button
+                onClick={() => router.push(`/eventos/${eventId}/editar`)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#2f61ff] bg-[#1b2f7a] px-2.5 py-1 text-xs font-semibold text-[#dbe6ff] hover:bg-[#203a95]"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 17.25V21h3.75L17.81 9.94m-4.51-4.51l2.83-2.83c.39-.39 1.02-.39 1.41 0l2.83 2.83c.39.39.39 1.02 0 1.41l-2.83 2.83" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span>Editar</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {loading ? <p className="text-sm text-[#b8bfd1]">Carregando...</p> : null}
-        {error ? <p className="text-sm text-[#f5a5a5]">{error}</p> : null}
+        {loading ? <p className="text-xs text-[#b8bfd1]">Carregando...</p> : null}
+        {error ? <p className="text-xs text-[#f5a5a5]">{error}</p> : null}
 
         {!loading && !error && event ? (
           <>
-            <section className="mb-6 rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-5">
-              <h1 className="text-3xl font-semibold mb-4">{event.title}</h1>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <section className="mb-3 rounded-lg border border-[#2c313d] bg-[#1a1d24] p-3">
+              <h1 className="text-lg font-semibold mb-2">{event.title}</h1>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                 <div>
-                  <p className="text-xs text-[#8f96a8] uppercase tracking-wide">Descricao</p>
-                  <p className="text-sm text-[#d3d8e4]">{event.description || "-"}</p>
+                  <p className="text-[#8f96a8] uppercase tracking-wide">Desc</p>
+                  <p className="text-[#d3d8e4] truncate">{event.description || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#8f96a8] uppercase tracking-wide">Organizacao</p>
-                  <p className="text-sm text-[#d3d8e4]">{event.organizer || "-"}</p>
+                  <p className="text-[#8f96a8] uppercase tracking-wide">Org</p>
+                  <p className="text-[#d3d8e4] truncate">{event.organizer || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#8f96a8] uppercase tracking-wide">Data</p>
-                  <p className="text-sm text-[#d3d8e4]">{event.date}</p>
+                  <p className="text-[#8f96a8] uppercase tracking-wide">Data</p>
+                  <p className="text-[#d3d8e4]">{event.date}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#8f96a8] uppercase tracking-wide">Horario</p>
-                  <p className="text-sm text-[#d3d8e4]">{event.eventStart || "-"} a {event.eventEnd || "-"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#8f96a8] uppercase tracking-wide">Local</p>
-                  <p className="text-sm text-[#d3d8e4]">{event.location || "-"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#8f96a8] uppercase tracking-wide">Status</p>
-                  <p className="text-sm text-[#d3d8e4]">{event.status || "-"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#8f96a8] uppercase tracking-wide">Limite de Participantes</p>
-                  <p className="text-sm text-[#d3d8e4]">{event.participantLimit ? `${event.participantLimit} pessoas` : "Ilimitado"}</p>
+                  <p className="text-[#8f96a8] uppercase tracking-wide">Hora</p>
+                  <p className="text-[#d3d8e4] text-xs">{event.eventStart || "-"}</p>
                 </div>
               </div>
             </section>
 
-            <section className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-5">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-lg bg-[#1b2f7a] flex items-center justify-center">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#2f61ff]">
-                      <path d="M17 21H7a2 2 0 0 1-2-2V9.414a1 1 0 0 1 .293-.707l5-5a1 1 0 0 1 1.414 0l5 5A1 1 0 0 1 17 9.414V19a2 2 0 0 1-2 2z" fill="currentColor"/>
-                      <path d="M9 11h6v6H9z" fill="#111318"/>
+            <section className="mb-3 grid grid-cols-3 gap-2">
+              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-2.5">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <div className="w-6 h-6 rounded bg-[#1b2f7a] flex items-center justify-center flex-shrink-0">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-[#2f61ff]">
+                      <path d="M17 21H7a2 2 0 0 1-2-2V9.414a1 1 0 0 1 .293-.707l5-5a1 1 0 0 1 1.414 0l5 5A1 1 0 0 1 17 9.414V19a2 2 0 0 1-2 2z"/>
                     </svg>
                   </div>
-                  <p className="text-xs text-[#8f96a8] uppercase tracking-wide">Total de Participantes</p>
+                  <p className="text-xs text-[#8f96a8] uppercase">Total</p>
                 </div>
-                <p className="text-3xl font-bold text-[#dbe6ff]">{totalParticipants}</p>
+                <p className="text-xl font-bold text-[#dbe6ff]">{totalParticipants}</p>
               </div>
-              <div className="rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-5">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-lg bg-[#1d6a3f] flex items-center justify-center">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#2f9e5f]">
-                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="currentColor"/>
+              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-2.5">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <div className="w-6 h-6 rounded bg-[#1d6a3f] flex items-center justify-center flex-shrink-0">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-[#2f9e5f]">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
                     </svg>
                   </div>
-                  <p className="text-xs text-[#8f96a8] uppercase tracking-wide">Check-ins Realizados</p>
+                  <p className="text-xs text-[#8f96a8] uppercase">Check-in</p>
                 </div>
-                <p className="text-3xl font-bold text-[#ddf7e7]">{checkInCount}</p>
+                <p className="text-xl font-bold text-[#ddf7e7]">{checkInCount}</p>
               </div>
-              <div className="rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-5">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-lg bg-[#6a5f1d] flex items-center justify-center">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#ffc9a3]">
-                      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" fill="none" stroke="currentColor" strokeWidth="2"/>
-                      <path d="M13 2v7h7" fill="none" stroke="currentColor" strokeWidth="2"/>
-                      <path d="M9 14h6M9 18h6" fill="none" stroke="currentColor" strokeWidth="2"/>
+              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-2.5">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <div className="w-6 h-6 rounded bg-[#6a5f1d] flex items-center justify-center flex-shrink-0">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-[#ffc9a3]">
+                      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
                     </svg>
                   </div>
-                  <p className="text-xs text-[#8f96a8] uppercase tracking-wide">Taxa de Presença</p>
+                  <p className="text-xs text-[#8f96a8] uppercase">Presença</p>
                 </div>
-                <p className="text-3xl font-bold text-[#dbe6ff]">{percentualCheckIn}%</p>
+                <p className="text-xl font-bold text-[#dbe6ff]">{percentualCheckIn}%</p>
               </div>
             </section>
 
-            <section className="mb-6 rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-5">
-              <h3 className="mb-4 text-xl font-semibold">Status de Presença</h3>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm text-[#b8bfd1]">Presentes</span>
-                    <span className="text-sm font-semibold text-[#ddf7e7]">{checkInCount}/{totalParticipants}</span>
-                  </div>
-                  <div className="w-full bg-[#34394a] rounded-full h-2">
-                    <div
-                      className="bg-[#2f9e5f] h-2 rounded-full transition-all"
-                      style={{ width: `${percentualCheckIn}%` }}
-                    />
-                  </div>
+            <section className="mb-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-3">
+                <h3 className="mb-2 text-xs font-semibold uppercase">Timeline</h3>
+                <div className="w-full overflow-x-auto">
+                  <LineChart data={timelineData} />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-3">
+                <h3 className="mb-2 text-xs font-semibold uppercase">Categorias</h3>
+                <div className="w-full overflow-x-auto">
+                  <PieChart data={categoryData} />
                 </div>
               </div>
             </section>
 
-            <section className="mb-6 rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-5">
-              <h3 className="mb-6 text-xl font-semibold">Timeline de Inscrições</h3>
-              <div className="w-full overflow-x-auto">
-                <LineChart data={timelineData} />
-              </div>
-            </section>
-
-            <section className="mb-6 rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-5">
-              <h3 className="mb-6 text-xl font-semibold">Distribuição por Categoria</h3>
-              <div className="w-full overflow-x-auto">
-                <PieChart data={categoryData} />
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-5">
-              <h2 className="mb-4 text-xl font-semibold">Participantes ({totalParticipants})</h2>
-              {participants.length === 0 ? (
-                <p className="text-sm text-[#b8bfd1]">Nenhum participante cadastrado.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-[#34394a]">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-[#8f96a8] uppercase">Nome</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-[#8f96a8] uppercase">Email</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-[#8f96a8] uppercase">Instituicao</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-[#8f96a8] uppercase">Cargo</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-[#8f96a8] uppercase">Cidade</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-[#8f96a8] uppercase">Check-in</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {participants.map((participant) => (
-                        <tr key={participant.id} className="border-b border-[#34394a] hover:bg-[#212634] transition-colors">
-                          <td className="px-4 py-3 font-medium text-[#d3d8e4]">{participant.name}</td>
-                          <td className="px-4 py-3 text-[#9ba2b3]">{participant.email}</td>
-                          <td className="px-4 py-3 text-[#9ba2b3]">{participant.institution || "-"}</td>
-                          <td className="px-4 py-3 text-[#9ba2b3]">{participant.jobTitle || "-"}</td>
-                          <td className="px-4 py-3 text-[#9ba2b3]">{participant.city ? `${participant.city}, ${participant.uf}` : "-"}</td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                              participant.checkIn
-                                ? "bg-[#1d6a3f] text-[#ddf7e7]"
-                                : "bg-[#6a3f1d] text-[#ffc9a3]"
-                            }`}>
-                              {participant.checkIn ? "✓ Presente" : "Ausente"}
-                            </span>
-                          </td>
+            {showParticipants && (
+              <section className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-xs font-semibold uppercase">Participantes</h2>
+                  <button
+                    onClick={() => setShowParticipants(false)}
+                    className="text-xs text-[#8f96a8] hover:text-[#d3d8e4]"
+                  >
+                    Fechar
+                  </button>
+                </div>
+                {participants.length === 0 ? (
+                  <p className="text-xs text-[#b8bfd1]">Nenhum participante.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-[#34394a]">
+                          <th className="px-2 py-1 text-left text-[#8f96a8] uppercase">Nome</th>
+                          <th className="px-2 py-1 text-left text-[#8f96a8] uppercase">Email</th>
+                          <th className="px-2 py-1 text-left text-[#8f96a8] uppercase hidden sm:table-cell">Instituição</th>
+                          <th className="px-2 py-1 text-center text-[#8f96a8] uppercase">Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+                      </thead>
+                      <tbody>
+                        {participants.map((participant) => (
+                          <tr key={participant.id} className="border-b border-[#34394a] hover:bg-[#212634]">
+                            <td className="px-2 py-1 text-[#d3d8e4] truncate">{participant.name}</td>
+                            <td className="px-2 py-1 text-[#9ba2b3] truncate">{participant.email}</td>
+                            <td className="px-2 py-1 text-[#9ba2b3] hidden sm:table-cell truncate">{participant.institution || "-"}</td>
+                            <td className="px-2 py-1 text-center">
+                              <span className={`inline-flex text-xs px-1.5 py-0.5 rounded ${
+                                participant.checkIn
+                                  ? "bg-[#1d6a3f] text-[#ddf7e7]"
+                                  : "bg-[#6a3f1d] text-[#ffc9a3]"
+                              }`}>
+                                {participant.checkIn ? "✓" : "✗"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            )}
           </>
         ) : null}
       </div>
