@@ -41,7 +41,6 @@ export default function EventDetailsPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showParticipants, setShowParticipants] = useState(false);
 
   useEffect(() => {
     const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) || "";
@@ -294,17 +293,6 @@ export default function EventDetailsPage() {
           <div className="flex gap-1.5">
             {!loading && !error && event && (
               <button
-                onClick={() => setShowParticipants(!showParticipants)}
-                className="inline-flex items-center gap-1.5 rounded-md border border-[#3f4658] bg-[#232834] px-2.5 py-1 text-xs text-[#d3d8e4] hover:bg-[#2a3040]"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0z" stroke="currentColor" strokeWidth="1.5"/>
-                </svg>
-                <span>Participantes ({totalParticipants})</span>
-              </button>
-            )}
-            {!loading && !error && event && (
-              <button
                 onClick={() => router.push(`/eventos/${eventId}/editar`)}
                 className="inline-flex items-center gap-1.5 rounded-md border border-[#2f61ff] bg-[#1b2f7a] px-2.5 py-1 text-xs font-semibold text-[#dbe6ff] hover:bg-[#203a95]"
               >
@@ -396,53 +384,62 @@ export default function EventDetailsPage() {
               </div>
             </section>
 
-            {showParticipants && (
-              <section className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-xs font-semibold uppercase">Participantes</h2>
-                  <button
-                    onClick={() => setShowParticipants(false)}
-                    className="text-xs text-[#8f96a8] hover:text-[#d3d8e4]"
-                  >
-                    Fechar
-                  </button>
-                </div>
-                {participants.length === 0 ? (
-                  <p className="text-xs text-[#b8bfd1]">Nenhum participante.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-[#34394a]">
-                          <th className="px-2 py-1 text-left text-[#8f96a8] uppercase">Nome</th>
-                          <th className="px-2 py-1 text-left text-[#8f96a8] uppercase">Email</th>
-                          <th className="px-2 py-1 text-left text-[#8f96a8] uppercase hidden sm:table-cell">Instituição</th>
-                          <th className="px-2 py-1 text-center text-[#8f96a8] uppercase">Status</th>
+            <section className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-3">
+              <h2 className="mb-2 text-xs font-semibold uppercase">Participantes ({totalParticipants})</h2>
+              {participants.length === 0 ? (
+                <p className="text-xs text-[#b8bfd1]">Nenhum participante cadastrado.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-[#34394a]">
+                        <th className="px-2 py-1 text-left text-[#8f96a8] uppercase">Nome</th>
+                        <th className="px-2 py-1 text-left text-[#8f96a8] uppercase">Categoria</th>
+                        <th className="px-2 py-1 text-left text-[#8f96a8] uppercase hidden sm:table-cell">Inscrito em</th>
+                        <th className="px-2 py-1 text-left text-[#8f96a8] uppercase">Status</th>
+                        <th className="px-2 py-1 text-center text-[#8f96a8] uppercase">Check-in</th>
+                        <th className="px-2 py-1 text-center text-[#8f96a8] uppercase">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {participants.map((participant) => (
+                        <tr key={participant.id} className="border-b border-[#34394a] hover:bg-[#212634]">
+                          <td className="px-2 py-1 text-[#d3d8e4] truncate font-medium">{participant.name}</td>
+                          <td className="px-2 py-1 text-[#9ba2b3] truncate">
+                            {participant.category ? participant.category.replace(/_/g, ' ') : "-"}
+                          </td>
+                          <td className="px-2 py-1 text-[#9ba2b3] hidden sm:table-cell text-xs">
+                            {participant.createdAt ? new Date(participant.createdAt).toLocaleDateString('pt-BR') : "-"}
+                          </td>
+                          <td className="px-2 py-1 text-[#9ba2b3] text-xs truncate">{participant.institution || "-"}</td>
+                          <td className="px-2 py-1 text-center">
+                            <span className={`inline-flex text-xs px-1.5 py-0.5 rounded font-medium ${
+                              participant.checkIn
+                                ? "bg-[#1d6a3f] text-[#ddf7e7]"
+                                : "bg-[#6a3f1d] text-[#ffc9a3]"
+                            }`}>
+                              {participant.checkIn ? "✓ Sim" : "✗ Não"}
+                            </span>
+                          </td>
+                          <td className="px-2 py-1 text-center">
+                            <button
+                              onClick={() => router.push(`/eventos/${eventId}/participantes/${participant.id}/editar`)}
+                              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-[#1b2f7a] text-[#dbe6ff] hover:bg-[#203a95]"
+                              title="Editar participante"
+                            >
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                                <path d="M3 17.25V21h3.75L17.81 9.94m-4.51-4.51l2.83-2.83c.39-.39 1.02-.39 1.41 0l2.83 2.83c.39.39.39 1.02 0 1.41l-2.83 2.83" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              Editar
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {participants.map((participant) => (
-                          <tr key={participant.id} className="border-b border-[#34394a] hover:bg-[#212634]">
-                            <td className="px-2 py-1 text-[#d3d8e4] truncate">{participant.name}</td>
-                            <td className="px-2 py-1 text-[#9ba2b3] truncate">{participant.email}</td>
-                            <td className="px-2 py-1 text-[#9ba2b3] hidden sm:table-cell truncate">{participant.institution || "-"}</td>
-                            <td className="px-2 py-1 text-center">
-                              <span className={`inline-flex text-xs px-1.5 py-0.5 rounded ${
-                                participant.checkIn
-                                  ? "bg-[#1d6a3f] text-[#ddf7e7]"
-                                  : "bg-[#6a3f1d] text-[#ffc9a3]"
-                              }`}>
-                                {participant.checkIn ? "✓" : "✗"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
-            )}
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
           </>
         ) : null}
       </div>
