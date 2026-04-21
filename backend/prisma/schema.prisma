@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Event {
+  id           Int           @id @default(autoincrement())
+  title        String
+  description  String?
+  organizer    String?
+  participantLimit Int?
+  date         String
+  eventStart   String?
+  eventEnd     String?
+  location     String?
+  status       String        @default("DRAFT")
+  participants Participant[]
+  checkInLogs  CheckInLog[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now()) @updatedAt
+}
+
+model Participant {
+  id          Int          @id @default(autoincrement())
+  name        String
+  email       String
+  cpf         String?
+  phone       String?
+  institution String?
+  jobTitle    String?
+  city        String?
+  uf          String?
+  category    String       @default("PUBLICO_GERAL")
+  checkIn     Boolean      @default(false)
+  checkedInAt DateTime?
+  eventId     Int
+  event       Event        @relation(fields: [eventId], references: [id])
+  checkInLogs CheckInLog[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @default(now()) @updatedAt
+
+  @@unique([eventId, email])
+  @@unique([eventId, cpf])
+}
+
+model User {
+  id             Int          @id @default(autoincrement())
+  name           String
+  email          String       @unique
+  passwordHash   String
+  role           String       @default("STAFF")
+  checkInActions CheckInLog[] @relation("CheckInActor")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @default(now()) @updatedAt
+}
+
+model CheckInLog {
+  id            Int           @id @default(autoincrement())
+  participantId Int
+  participant   Participant   @relation(fields: [participantId], references: [id])
+  eventId       Int
+  event         Event         @relation(fields: [eventId], references: [id])
+  actorUserId   Int
+  actor         User          @relation("CheckInActor", fields: [actorUserId], references: [id])
+  action        String
+  createdAt     DateTime      @default(now())
+
+  @@index([eventId, createdAt])
+  @@index([participantId, createdAt])
+}
