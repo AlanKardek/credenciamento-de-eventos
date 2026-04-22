@@ -41,7 +41,6 @@ export default function EventDetailsPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showParticipants, setShowParticipants] = useState(false);
 
   useEffect(() => {
     const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) || "";
@@ -155,16 +154,14 @@ export default function EventDetailsPage() {
     return Array.from(categories.entries()).map(([name, value]) => ({ name, value }));
   })();
 
-  // Cores para o gráfico de pizza
   const colors = ['#2f9e5f', '#2f61ff', '#ff6b6b', '#ffd93d', '#6bcf7f', '#4ecdc4', '#ff8c42', '#a78bfa'];
 
-  // Função para desenhar gráfico de linha SVG
   const LineChart = ({ data }: { data: typeof timelineData }) => {
     if (data.length === 0) return null;
 
-    const width = 400;
-    const height = 180;
-    const padding = 35;
+    const width = 350;
+    const height = 150;
+    const padding = 30;
     const maxValue = Math.max(...data.map(d => d.accumulated), 1);
 
     const points = data.map((d, i) => {
@@ -175,64 +172,43 @@ export default function EventDetailsPage() {
 
     return (
       <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="w-full">
-        {/* Grid */}
-        {[0, 1, 2, 3].map(i => (
+        {[0, 1, 2].map(i => (
           <line
             key={`grid-${i}`}
             x1={padding}
-            y1={padding + (i * (height - padding * 2)) / 3}
+            y1={padding + (i * (height - padding * 2)) / 2}
             x2={width - padding}
-            y2={padding + (i * (height - padding * 2)) / 3}
+            y2={padding + (i * (height - padding * 2)) / 2}
             stroke="#34394a"
             strokeWidth="1"
             strokeDasharray="3"
           />
         ))}
 
-        {/* Eixos */}
-        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#566575" strokeWidth="1.5" />
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#566575" strokeWidth="1.5" />
+        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#566575" strokeWidth="1" />
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#566575" strokeWidth="1" />
 
-        {/* Linha */}
         <polyline
           points={points.map(p => `${p.x},${p.y}`).join(' ')}
           fill="none"
           stroke="#2f61ff"
-          strokeWidth="1.5"
+          strokeWidth="2"
         />
 
-        {/* Pontos */}
         {points.map((p, i) => (
-          <circle key={`point-${i}`} cx={p.x} cy={p.y} r="3" fill="#2f61ff" />
-        ))}
-
-        {/* Labels */}
-        {points.map((p, i) => (
-          i % Math.max(Math.ceil(points.length / 3), 1) === 0 && (
-            <text
-              key={`label-${i}`}
-              x={p.x}
-              y={height - padding + 15}
-              textAnchor="middle"
-              fontSize="10"
-              fill="#8f96a8"
-            >
-              {p.date}
-            </text>
-          )
+          <circle key={`point-${i}`} cx={p.x} cy={p.y} r="2.5" fill="#2f61ff" />
         ))}
       </svg>
     );
   };
 
-  // Função para desenhar gráfico de pizza SVG
   const PieChart = ({ data }: { data: Array<{ name: string; value: number }> }) => {
     if (data.length === 0) return null;
 
     const total = data.reduce((sum, item) => sum + item.value, 0);
-    const radius = 60;
-    const cx = 90;
-    const cy = 75;
+    const radius = 50;
+    const cx = 70;
+    const cy = 60;
 
     let currentAngle = -Math.PI / 2;
     const slices = data.map((item, index) => {
@@ -254,8 +230,8 @@ export default function EventDetailsPage() {
     });
 
     return (
-      <div className="flex items-center gap-4">
-        <svg width="180" height="150" viewBox="0 0 180 150" className="flex-shrink-0">
+      <div className="flex items-center gap-3">
+        <svg width="150" height="120" viewBox="0 0 150 120" className="flex-shrink-0">
           {slices.map((slice, i) => (
             <path
               key={`slice-${i}`}
@@ -273,10 +249,8 @@ export default function EventDetailsPage() {
                 className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: slice.color }}
               />
-              <span className="text-[#b8bfd1] flex-1">{slice.name}</span>
-              <span className="text-[#8f96a8]">
-                {slice.value} ({Math.round((slice.value / total) * 100)}%)
-              </span>
+              <span className="text-[#b8bfd1]">{slice.name}</span>
+              <span className="text-[#8f96a8]">{Math.round((slice.value / total) * 100)}%</span>
             </div>
           ))}
         </div>
@@ -286,35 +260,22 @@ export default function EventDetailsPage() {
 
   return (
     <main className="min-h-screen bg-[#111318] text-white">
-      <div className="mx-auto max-w-6xl px-3 py-3 md:px-4">
-        <div className="mb-3 flex justify-between items-center gap-2">
-          <Link href="/" className="rounded-md border border-[#3f4658] bg-[#232834] px-2.5 py-1 text-xs text-[#d3d8e4] hover:bg-[#2a3040] whitespace-nowrap">
+      <div className="mx-auto max-w-6xl px-4 py-4 md:px-6">
+        <div className="mb-4 flex justify-between items-center gap-2">
+          <Link href="/" className="rounded-md border border-[#3f4658] bg-[#232834] px-3 py-1.5 text-xs text-[#d3d8e4] hover:bg-[#2a3040] whitespace-nowrap">
             ← Voltar
           </Link>
-          <div className="flex gap-1.5">
-            {!loading && !error && event && (
-              <button
-                onClick={() => setShowParticipants(!showParticipants)}
-                className="inline-flex items-center gap-1.5 rounded-md border border-[#3f4658] bg-[#232834] px-2.5 py-1 text-xs text-[#d3d8e4] hover:bg-[#2a3040]"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0z" stroke="currentColor" strokeWidth="1.5"/>
-                </svg>
-                <span>Participantes ({totalParticipants})</span>
-              </button>
-            )}
-            {!loading && !error && event && (
-              <button
-                onClick={() => router.push(`/eventos/${eventId}/editar`)}
-                className="inline-flex items-center gap-1.5 rounded-md border border-[#2f61ff] bg-[#1b2f7a] px-2.5 py-1 text-xs font-semibold text-[#dbe6ff] hover:bg-[#203a95]"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 17.25V21h3.75L17.81 9.94m-4.51-4.51l2.83-2.83c.39-.39 1.02-.39 1.41 0l2.83 2.83c.39.39.39 1.02 0 1.41l-2.83 2.83" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span>Editar</span>
-              </button>
-            )}
-          </div>
+          {!loading && !error && event && (
+            <button
+              onClick={() => router.push(`/eventos/${eventId}/editar`)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#2f61ff] bg-[#1b2f7a] px-3 py-1.5 text-xs font-semibold text-[#dbe6ff] hover:bg-[#203a95]"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M3 17.25V21h3.75L17.81 9.94m-4.51-4.51l2.83-2.83c.39-.39 1.02-.39 1.41 0l2.83 2.83c.39.39.39 1.02 0 1.41l-2.83 2.83" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>Editar Evento</span>
+            </button>
+          )}
         </div>
 
         {loading ? <p className="text-xs text-[#b8bfd1]">Carregando...</p> : null}
@@ -322,127 +283,120 @@ export default function EventDetailsPage() {
 
         {!loading && !error && event ? (
           <>
-            <section className="mb-3 rounded-lg border border-[#2c313d] bg-[#1a1d24] p-3">
-              <h1 className="text-lg font-semibold mb-2">{event.title}</h1>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+            <section className="mb-4 rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+              <h1 className="text-2xl font-bold mb-3">{event.title}</h1>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <div>
-                  <p className="text-[#8f96a8] uppercase tracking-wide">Desc</p>
-                  <p className="text-[#d3d8e4] truncate">{event.description || "-"}</p>
+                  <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-1">Descrição</p>
+                  <p className="text-[#d3d8e4]">{event.description || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-[#8f96a8] uppercase tracking-wide">Org</p>
-                  <p className="text-[#d3d8e4] truncate">{event.organizer || "-"}</p>
+                  <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-1">Organização</p>
+                  <p className="text-[#d3d8e4]">{event.organizer || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-[#8f96a8] uppercase tracking-wide">Data</p>
+                  <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-1">Data</p>
                   <p className="text-[#d3d8e4]">{event.date}</p>
                 </div>
                 <div>
-                  <p className="text-[#8f96a8] uppercase tracking-wide">Hora</p>
-                  <p className="text-[#d3d8e4] text-xs">{event.eventStart || "-"}</p>
+                  <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-1">Horário</p>
+                  <p className="text-[#d3d8e4]">{event.eventStart || "-"} até {event.eventEnd || "-"}</p>
                 </div>
               </div>
             </section>
 
-            <section className="mb-3 grid grid-cols-3 gap-2">
-              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <div className="w-6 h-6 rounded bg-[#1b2f7a] flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-[#2f61ff]">
-                      <path d="M17 21H7a2 2 0 0 1-2-2V9.414a1 1 0 0 1 .293-.707l5-5a1 1 0 0 1 1.414 0l5 5A1 1 0 0 1 17 9.414V19a2 2 0 0 1-2 2z"/>
-                    </svg>
-                  </div>
-                  <p className="text-xs text-[#8f96a8] uppercase">Total</p>
-                </div>
-                <p className="text-xl font-bold text-[#dbe6ff]">{totalParticipants}</p>
+            <section className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+                <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-2">Total de Participantes</p>
+                <p className="text-4xl font-bold text-[#dbe6ff]">{totalParticipants}</p>
               </div>
-              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <div className="w-6 h-6 rounded bg-[#1d6a3f] flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-[#2f9e5f]">
-                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-                    </svg>
-                  </div>
-                  <p className="text-xs text-[#8f96a8] uppercase">Check-in</p>
-                </div>
-                <p className="text-xl font-bold text-[#ddf7e7]">{checkInCount}</p>
+              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+                <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-2">Check-ins Realizados</p>
+                <p className="text-4xl font-bold text-[#ddf7e7]">{checkInCount}</p>
               </div>
-              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <div className="w-6 h-6 rounded bg-[#6a5f1d] flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-[#ffc9a3]">
-                      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-                    </svg>
-                  </div>
-                  <p className="text-xs text-[#8f96a8] uppercase">Presença</p>
-                </div>
-                <p className="text-xl font-bold text-[#dbe6ff]">{percentualCheckIn}%</p>
+              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+                <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-2">Taxa de Presença</p>
+                <p className="text-4xl font-bold text-[#dbe6ff]">{percentualCheckIn}%</p>
               </div>
             </section>
 
-            <section className="mb-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-3">
-                <h3 className="mb-2 text-xs font-semibold uppercase">Timeline</h3>
+            <section className="mb-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+                <h3 className="mb-3 text-sm font-semibold uppercase">Timeline de Inscrições</h3>
                 <div className="w-full overflow-x-auto">
                   <LineChart data={timelineData} />
                 </div>
               </div>
 
-              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-3">
-                <h3 className="mb-2 text-xs font-semibold uppercase">Categorias</h3>
+              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+                <h3 className="mb-3 text-sm font-semibold uppercase">Distribuição por Categoria</h3>
                 <div className="w-full overflow-x-auto">
                   <PieChart data={categoryData} />
                 </div>
               </div>
             </section>
 
-            {showParticipants && (
-              <section className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-xs font-semibold uppercase">Participantes</h2>
-                  <button
-                    onClick={() => setShowParticipants(false)}
-                    className="text-xs text-[#8f96a8] hover:text-[#d3d8e4]"
-                  >
-                    Fechar
-                  </button>
-                </div>
-                {participants.length === 0 ? (
-                  <p className="text-xs text-[#b8bfd1]">Nenhum participante.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-[#34394a]">
-                          <th className="px-2 py-1 text-left text-[#8f96a8] uppercase">Nome</th>
-                          <th className="px-2 py-1 text-left text-[#8f96a8] uppercase">Email</th>
-                          <th className="px-2 py-1 text-left text-[#8f96a8] uppercase hidden sm:table-cell">Instituição</th>
-                          <th className="px-2 py-1 text-center text-[#8f96a8] uppercase">Status</th>
+            <section className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+              <h2 className="mb-4 text-lg font-semibold uppercase">Participantes ({totalParticipants})</h2>
+              {participants.length === 0 ? (
+                <p className="text-sm text-[#b8bfd1]">Nenhum participante cadastrado.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b-2 border-[#2f61ff] bg-[#0f1117]">
+                        <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide">Nome</th>
+                        <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide">Categoria</th>
+                        <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide hidden sm:table-cell">Inscrito em</th>
+                        <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide">Status</th>
+                        <th className="px-4 py-3 text-center text-[#2f61ff] font-bold uppercase tracking-wide">Check-in</th>
+                        <th className="px-4 py-3 text-center text-[#2f61ff] font-bold uppercase tracking-wide">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {participants.map((participant, index) => (
+                        <tr
+                          key={participant.id}
+                          className={`border-b border-[#34394a] ${
+                            index % 2 === 0 ? "bg-[#0f1117]" : "bg-[#1a1d24]"
+                          } hover:bg-[#212634] transition-colors`}
+                        >
+                          <td className="px-4 py-3 text-[#d3d8e4] font-semibold text-sm">{participant.name}</td>
+                          <td className="px-4 py-3 text-[#9ba2b3] text-sm">
+                            {participant.category ? participant.category.replace(/_/g, ' ') : "-"}
+                          </td>
+                          <td className="px-4 py-3 text-[#9ba2b3] text-sm hidden sm:table-cell">
+                            {participant.createdAt ? new Date(participant.createdAt).toLocaleDateString('pt-BR') : "-"}
+                          </td>
+                          <td className="px-4 py-3 text-[#9ba2b3] text-sm">{participant.institution || "-"}</td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold ${
+                              participant.checkIn
+                                ? "bg-[#1d6a3f] text-[#ddf7e7]"
+                                : "bg-[#6a3f1d] text-[#ffc9a3]"
+                            }`}>
+                              {participant.checkIn ? "✓ Sim" : "✗ Não"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => router.push(`/eventos/${eventId}/participantes/${participant.id}/editar`)}
+                              className="inline-flex items-center gap-1 rounded px-3 py-1.5 text-xs bg-[#1b2f7a] text-[#dbe6ff] hover:bg-[#203a95] font-semibold"
+                              title="Editar participante"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                                <path d="M3 17.25V21h3.75L17.81 9.94m-4.51-4.51l2.83-2.83c.39-.39 1.02-.39 1.41 0l2.83 2.83c.39.39.39 1.02 0 1.41l-2.83 2.83" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              Editar
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {participants.map((participant) => (
-                          <tr key={participant.id} className="border-b border-[#34394a] hover:bg-[#212634]">
-                            <td className="px-2 py-1 text-[#d3d8e4] truncate">{participant.name}</td>
-                            <td className="px-2 py-1 text-[#9ba2b3] truncate">{participant.email}</td>
-                            <td className="px-2 py-1 text-[#9ba2b3] hidden sm:table-cell truncate">{participant.institution || "-"}</td>
-                            <td className="px-2 py-1 text-center">
-                              <span className={`inline-flex text-xs px-1.5 py-0.5 rounded ${
-                                participant.checkIn
-                                  ? "bg-[#1d6a3f] text-[#ddf7e7]"
-                                  : "bg-[#6a3f1d] text-[#ffc9a3]"
-                              }`}>
-                                {participant.checkIn ? "✓" : "✗"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
-            )}
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
           </>
         ) : null}
       </div>
