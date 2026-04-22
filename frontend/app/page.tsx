@@ -122,37 +122,14 @@ export default function Home() {
     }
   }
 
-  function logout() {
-    window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-    router.replace("/login");
-  }
-
   if (!authReady) {
     return <main className="min-h-screen bg-[#111318] text-white" />;
   }
 
   return (
     <main className="min-h-screen bg-[#111318] text-white">
-      <div className="mx-auto max-w-6xl px-4 py-5 md:px-6">
-        <header className="mb-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button className="rounded-md border border-[#2f61ff] bg-[#1b2f7a] px-4 py-2 text-sm font-medium text-[#dbe6ff] hover:bg-[#203a95]">
-              Home
-            </button>
-            <span className="text-sm text-[#8f96a8]">Eventos</span>
-          </div>
-
-          <button
-            onClick={logout}
-            aria-label="Perfil do usuario"
-            title="Sair"
-            className="flex h-10 items-center justify-center rounded-full border border-[#2f61ff] bg-[#1b2f7a] px-3 text-sm font-semibold text-[#dbe6ff] hover:bg-[#203a95]"
-          >
-            Perfil
-          </button>
-        </header>
-
-        <section className="mb-6 border-t border-[#2a3040] pt-6">
+      <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+        <section className="mb-6 border-b border-[#2a3040] pb-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-3xl font-semibold tracking-tight">Lista de eventos</h1>
             <button
