@@ -41,6 +41,9 @@ export default function EventDetailsPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredParticipants, setFilteredParticipants] = useState<Participant[]>([]);
 
   useEffect(() => {
     const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) || "";
@@ -117,6 +120,22 @@ export default function EventDetailsPage() {
       active = false;
     };
   }, [eventId, router, token]);
+
+  // Filtrar participantes conforme digitação
+  useEffect(() => {
+    if (!searchQuery) {
+      setFilteredParticipants(participants);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredParticipants(
+        participants.filter(p =>
+          p.name.toLowerCase().includes(query) ||
+          p.email.toLowerCase().includes(query) ||
+          (p.institution?.toLowerCase().includes(query) || false)
+        )
+      );
+    }
+  }, [searchQuery, participants]);
 
   const checkInCount = participants.filter(p => p.checkIn).length;
   const totalParticipants = participants.length;
@@ -261,22 +280,63 @@ export default function EventDetailsPage() {
   return (
     <main className="min-h-screen bg-[#111318] text-white">
       <div className="mx-auto max-w-6xl px-4 py-4 md:px-6">
-        <div className="mb-4 flex justify-between items-center gap-2">
+        <div className="mb-4 flex justify-between items-center gap-2 flex-wrap">
           <Link href="/" className="rounded-md border border-[#3f4658] bg-[#232834] px-3 py-1.5 text-xs text-[#d3d8e4] hover:bg-[#2a3040] whitespace-nowrap">
             ← Voltar
           </Link>
-          {!loading && !error && event && (
-            <button
-              onClick={() => router.push(`/eventos/${eventId}/editar`)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[#2f61ff] bg-[#1b2f7a] px-3 py-1.5 text-xs font-semibold text-[#dbe6ff] hover:bg-[#203a95]"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                <path d="M3 17.25V21h3.75L17.81 9.94m-4.51-4.51l2.83-2.83c.39-.39 1.02-.39 1.41 0l2.83 2.83c.39.39.39 1.02 0 1.41l-2.83 2.83" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span>Editar Evento</span>
-            </button>
-          )}
+          <div className="flex gap-2 flex-wrap">
+            {!loading && !error && event && (
+              <>
+                <button
+                  onClick={() => router.push(`/eventos/${eventId}/participantes/novo`)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[#2f9e5f] bg-[#1d6a3f] px-3 py-1.5 text-xs font-semibold text-[#ddf7e7] hover:bg-[#247a4a]"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14m7-7H5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Adicionar Participante</span>
+                </button>
+                <button
+                  onClick={() => setSearchOpen(!searchOpen)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[#3f4658] bg-[#232834] px-3 py-1.5 text-xs font-semibold text-[#d3d8e4] hover:bg-[#2a3040]"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/>
+                    <path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                  <span>Buscar</span>
+                </button>
+                <button
+                  onClick={() => router.push(`/eventos/${eventId}/editar`)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[#2f61ff] bg-[#1b2f7a] px-3 py-1.5 text-xs font-semibold text-[#dbe6ff] hover:bg-[#203a95]"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 17.25V21h3.75L17.81 9.94m-4.51-4.51l2.83-2.83c.39-.39 1.02-.39 1.41 0l2.83 2.83c.39.39.39 1.02 0 1.41l-2.83 2.83" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span>Editar Evento</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
+
+        {searchOpen && (
+          <div className="mb-4 rounded-lg border border-[#2c313d] bg-[#1a1d24] p-3">
+            <input
+              type="text"
+              placeholder="Buscar por nome, email ou instituição..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-3 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+              autoFocus
+            />
+            {searchQuery && (
+              <p className="mt-2 text-xs text-[#8f96a8]">
+                {filteredParticipants.length} participante(s) encontrado(s)
+              </p>
+            )}
+          </div>
+        )}
 
         {loading ? <p className="text-xs text-[#b8bfd1]">Carregando...</p> : null}
         {error ? <p className="text-xs text-[#f5a5a5]">{error}</p> : null}
@@ -337,9 +397,11 @@ export default function EventDetailsPage() {
             </section>
 
             <section className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
-              <h2 className="mb-4 text-lg font-semibold uppercase">Participantes ({totalParticipants})</h2>
-              {participants.length === 0 ? (
-                <p className="text-sm text-[#b8bfd1]">Nenhum participante cadastrado.</p>
+              <h2 className="mb-4 text-lg font-semibold uppercase">Participantes ({filteredParticipants.length}/{totalParticipants})</h2>
+              {filteredParticipants.length === 0 ? (
+                <p className="text-sm text-[#b8bfd1]">
+                  {searchQuery ? "Nenhum participante encontrado com esses critérios." : "Nenhum participante cadastrado."}
+                </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -354,7 +416,7 @@ export default function EventDetailsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {participants.map((participant, index) => (
+                      {filteredParticipants.map((participant, index) => (
                         <tr
                           key={participant.id}
                           className={`border-b border-[#34394a] ${
