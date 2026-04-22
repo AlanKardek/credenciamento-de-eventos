@@ -95,12 +95,22 @@ export default function Header() {
           <Link
             href="/"
             className={`text-sm font-medium px-3 py-2 rounded-md transition-colors ${
-              pathname.includes("/eventos")
+              pathname.includes("/eventos") && !pathname.includes("/arquivados")
                 ? "bg-[#1b2f7a] text-[#dbe6ff]"
                 : "text-[#d3d8e4] hover:bg-[#232834]"
             }`}
           >
             📅 Eventos
+          </Link>
+          <Link
+            href="/arquivados"
+            className={`text-sm font-medium px-3 py-2 rounded-md transition-colors ${
+              pathname.includes("/arquivados")
+                ? "bg-[#1b2f7a] text-[#dbe6ff]"
+                : "text-[#d3d8e4] hover:bg-[#232834]"
+            }`}
+          >
+            📦 Arquivados
           </Link>
         </nav>
 
@@ -139,6 +149,15 @@ export default function Header() {
                 className="w-full text-left px-4 py-2 text-sm text-[#d3d8e4] hover:bg-[#232834] hover:text-[#dbe6ff] transition-colors"
               >
                 📅 Eventos
+              </button>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  router.push('/arquivados');
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-[#d3d8e4] hover:bg-[#232834] hover:text-[#dbe6ff] transition-colors"
+              >
+                📦 Arquivados
               </button>
               <button
                 onClick={() => {

@@ -44,6 +44,7 @@ export default function EventDetailsPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredParticipants, setFilteredParticipants] = useState<Participant[]>([]);
+  const [archiving, setArchiving] = useState(false);
 
   useEffect(() => {
     const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) || "";
@@ -136,6 +137,50 @@ export default function EventDetailsPage() {
       );
     }
   }, [searchQuery, participants]);
+
+  const archiveEvent = async () => {
+    if (!event) return;
+
+    setArchiving(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/events/${eventId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...event,
+          status: event.status === "ARCHIVED" ? "DRAFT" : "ARCHIVED",
+        }),
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        router.replace("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Erro ao arquivar evento");
+      }
+
+      // Atualizar o evento localmente
+      setEvent((prev) =>
+        prev ? { ...prev, status: prev.status === "ARCHIVED" ? "DRAFT" : "ARCHIVED" } : null
+      );
+
+      // Redirecionar para home após arquivar
+      setTimeout(() => {
+        router.push("/");
+      }, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao arquivar evento");
+    } finally {
+      setArchiving(false);
+    }
+  };
 
   const checkInCount = participants.filter(p => p.checkIn).length;
   const totalParticipants = participants.length;
@@ -314,6 +359,16 @@ export default function EventDetailsPage() {
                     <path d="M3 17.25V21h3.75L17.81 9.94m-4.51-4.51l2.83-2.83c.39-.39 1.02-.39 1.41 0l2.83 2.83c.39.39.39 1.02 0 1.41l-2.83 2.83" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <span>Editar Evento</span>
+                </button>
+                <button
+                  onClick={archiveEvent}
+                  disabled={archiving}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[#ff6b6b] bg-[#6a2f2f] px-3 py-1.5 text-xs font-semibold text-[#ffc9a3] hover:bg-[#7a3f3f] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 3h6m-6 2v14a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V5m-6 0v-1a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M9 11h6M9 15h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>{event?.status === "ARCHIVED" ? "Desarquivar" : "Arquivar"}</span>
                 </button>
               </>
             )}
