@@ -4,6 +4,23 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { API_BASE_URL, TOKEN_STORAGE_KEY } from "@/app/constants/auth";
+import { UF_OPTIONS } from "@/app/constants/uf-options";
+
+// Funções de máscara
+const maskPhone = (value: string): string => {
+  const numbers = value.replace(/\D/g, "");
+  if (numbers.length <= 2) return numbers;
+  if (numbers.length <= 7) return `(${numbers.slice(0, 2)})${numbers.slice(2)}`;
+  return `(${numbers.slice(0, 2)})${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+};
+
+const maskCPF = (value: string): string => {
+  const numbers = value.replace(/\D/g, "");
+  if (numbers.length <= 3) return numbers;
+  if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
+  if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
+  return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
+};
 
 export default function AddParticipantPage() {
   const params = useParams<{ id: string }>();
@@ -39,9 +56,20 @@ export default function AddParticipantPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+    let finalValue = value;
+
+    // Aplicar máscaras
+    if (name === "phone") {
+      finalValue = maskPhone(value);
+    } else if (name === "cpf") {
+      finalValue = maskCPF(value);
+    } else if (name === "uf") {
+      finalValue = value.toUpperCase();
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: finalValue,
     }));
   };
 
@@ -161,6 +189,7 @@ export default function AddParticipantPage() {
                   value={formData.cpf}
                   onChange={handleChange}
                   required
+                  maxLength={14}
                   className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
                   placeholder="000.000.000-00"
                 />
@@ -171,13 +200,14 @@ export default function AddParticipantPage() {
                   Telefone
                 </label>
                 <input
-                  type="tel"
+                  type="text"
                   id="phone"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
+                  maxLength={14}
                   className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
-                  placeholder="(00) 99999-9999"
+                  placeholder="(00)00000-0000"
                 />
               </div>
 
@@ -228,18 +258,22 @@ export default function AddParticipantPage() {
 
               <div>
                 <label htmlFor="uf" className="block text-sm font-medium text-[#d3d8e4] mb-2">
-                  UF
+                  Estado (UF)
                 </label>
-                <input
-                  type="text"
+                <select
                   id="uf"
                   name="uf"
                   value={formData.uf}
                   onChange={handleChange}
-                  maxLength={2}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none uppercase"
-                  placeholder="SP"
-                />
+                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] focus:border-[#2f61ff] focus:outline-none"
+                >
+                  <option value="">Selecione um estado...</option>
+                  {UF_OPTIONS.map((uf) => (
+                    <option key={uf.value} value={uf.value}>
+                      {uf.label} ({uf.value})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="md:col-span-2">
