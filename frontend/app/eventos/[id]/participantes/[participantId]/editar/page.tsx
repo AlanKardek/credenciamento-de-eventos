@@ -66,7 +66,53 @@ export default function EditParticipantPage() {
       setError("");
 
       try {
-        const response = await fetch(`${API_BASE_URL}/events/${eventId}/participants/search?q=${participantId}`, {
+        // Se o parâmetro for um ID numérico válido, buscar todos participantes e localizar por id
+        if (Number.isInteger(participantId) && participantId > 0) {
+          const response = await fetch(`${API_BASE_URL}/events/${eventId}/participants`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (response.status === 401 || response.status === 403) {
+            window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+            router.replace("/login");
+            return;
+          }
+
+          if (!response.ok) {
+            throw new Error("Não foi possível carregar os dados do participante.");
+          }
+
+          const participants = (await response.json()) as any[];
+          const participant = participants.find(p => p.id === participantId);
+
+          if (!participant) {
+            throw new Error("Participante não encontrado.");
+          }
+
+          if (active) {
+            setFormData({
+              name: participant.name || "",
+              email: participant.email || "",
+              cpf: participant.cpf || "",
+              phone: participant.phone || "",
+              institution: participant.institution || "",
+              jobTitle: participant.jobTitle || "",
+              city: participant.city || "",
+              uf: participant.uf || "",
+              category: participant.category || "PUBLICO_GERAL",
+            });
+          }
+
+          return;
+        }
+
+        // Caso não seja um ID numérico, tratar como busca por nome/cpf
+        const queryStr = String(params.participantId || "").trim();
+        if (!queryStr || queryStr.length < 2) {
+          throw new Error("Informe nome ou CPF com ao menos 2 caracteres para busca.");
+        }
+
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}/participants/search?q=${encodeURIComponent(queryStr)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -77,11 +123,21 @@ export default function EditParticipantPage() {
         }
 
         if (!response.ok) {
-          throw new Error("Não foi possível carregar os dados do participante.");
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || "Não foi possível carregar os dados do participante.");
         }
 
         const participants = (await response.json()) as any[];
-        const participant = participants.find(p => p.id === participantId);
+
+        // Primeiro tentar CPF (apenas dígitos)
+        const digitsQuery = queryStr.replace(/\D/g, "");
+        let participant = digitsQuery ? participants.find(p => (p.cpf || "").replace(/\D/g, "") === digitsQuery) : undefined;
+
+        // Depois tentar por nome (contains, case-insensitive)
+        if (!participant) {
+          const qLower = queryStr.toLowerCase();
+          participant = participants.find(p => (p.name || "").toLowerCase().includes(qLower) || (p.email || "").toLowerCase().includes(qLower));
+        }
 
         if (!participant) {
           throw new Error("Participante não encontrado.");

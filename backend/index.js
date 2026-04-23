@@ -16,7 +16,8 @@ const ROLES = {
 const EVENT_STATUS = {
   DRAFT: 'DRAFT',
   OPEN: 'OPEN',
-  CLOSED: 'CLOSED'
+  CLOSED: 'CLOSED',
+  ARCHIVED: 'ARCHIVED'
 };
 const PARTICIPANT_CATEGORY = {
   ESTUDANTE: 'ESTUDANTE',
@@ -314,6 +315,50 @@ app.get('/me', authenticate, async (req, res) => {
   }
 
   res.status(200).json(sanitizeUser(user));
+});
+
+// Atualiza o perfil do usuario autenticado
+app.put('/me', authenticate, async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user) {
+    throw new HttpError(404, 'Usuario nao encontrado.');
+  }
+
+  const name = requireString(req.body.name, 'name');
+  const email = requireEmail(req.body.email);
+  const currentPassword = parseOptionalText(req.body.currentPassword, 'currentPassword');
+  const password = parseOptionalText(req.body.password, 'password');
+
+  if (password && password.length < 6) {
+    throw new HttpError(400, 'A nova senha deve ter no minimo 6 caracteres.');
+  }
+
+  if (password && !currentPassword) {
+    throw new HttpError(400, 'Informe a senha atual para definir uma nova senha.');
+  }
+
+  if (!password && currentPassword) {
+    throw new HttpError(400, 'Informe a nova senha.');
+  }
+
+  if (password) {
+    const validPassword = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!validPassword) {
+      throw new HttpError(401, 'Senha atual incorreta.');
+    }
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      name,
+      email,
+      ...(password ? { passwordHash: await bcrypt.hash(password, 10) } : {})
+    }
+  });
+
+  const token = signToken(updatedUser);
+  res.status(200).json({ user: sanitizeUser(updatedUser), token });
 });
 
 // ADMIN: cria usuario STAFF para operacao de credenciamento

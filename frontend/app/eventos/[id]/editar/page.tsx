@@ -331,10 +331,9 @@ export default function EditEventPage() {
                   className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] focus:border-[#2f61ff] focus:outline-none"
                 >
                   <option value="DRAFT">Rascunho</option>
-                  <option value="PUBLISHED">Publicado</option>
-                  <option value="ONGOING">Em andamento</option>
-                  <option value="COMPLETED">Concluido</option>
-                  <option value="CANCELLED">Cancelado</option>
+                  <option value="OPEN">Aberto</option>
+                  <option value="CLOSED">Fechado</option>
+                  <option value="ARCHIVED">Arquivado</option>
                 </select>
               </div>
 
