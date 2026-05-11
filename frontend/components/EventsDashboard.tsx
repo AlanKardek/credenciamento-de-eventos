@@ -457,18 +457,31 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                       </svg>
                       <span>Relatório</span>
                     </button>
-                    <button
-                      className="inline-flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors"
-                      title="QR Code"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <rect x="3" y="3" width="8" height="8" stroke="currentColor" strokeWidth="1.5"/>
-                        <rect x="13" y="3" width="8" height="8" stroke="currentColor" strokeWidth="1.5"/>
-                        <rect x="3" y="13" width="8" height="8" stroke="currentColor" strokeWidth="1.5"/>
-                        <rect x="15" y="15" width="4" height="4" stroke="currentColor" strokeWidth="1"/>
-                      </svg>
-                      <span>QR Code</span>
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors"
+                        title="QR Code"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <rect x="3" y="3" width="8" height="8" stroke="currentColor" strokeWidth="1.5"/>
+                          <rect x="13" y="3" width="8" height="8" stroke="currentColor" strokeWidth="1.5"/>
+                          <rect x="3" y="13" width="8" height="8" stroke="currentColor" strokeWidth="1.5"/>
+                          <rect x="15" y="15" width="4" height="4" stroke="currentColor" strokeWidth="1"/>
+                        </svg>
+                        <span>QR Code</span>
+                      </button>
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenTransferEventId((current) => (current === evento.id ? null : evento.id))
+                          }
+                          className="rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900 hover:bg-indigo-100 dark:hover:bg-indigo-800 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 transition-colors"
+                        >
+                          Mover evento
+                        </button>
+                      ) : null}
+                    </div>
                     <div className="flex flex-col gap-2">
                       <button
                         onClick={() => router.push(`/eventos/${evento.id}`)}
@@ -486,17 +499,6 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                         </svg>
                         <span>{isProcessing ? "Salvando..." : actionLabel}</span>
                       </button>
-                      {isAdmin ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenTransferEventId((current) => (current === evento.id ? null : evento.id))
-                          }
-                          className="rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900 hover:bg-indigo-100 dark:hover:bg-indigo-800 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 transition-colors"
-                        >
-                          Mover conta
-                        </button>
-                      ) : null}
                     </div>
                   </div>
                 </div>
