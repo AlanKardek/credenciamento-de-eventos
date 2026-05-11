@@ -365,8 +365,7 @@ async function requireOwnedParticipant(req, participantId, select) {
 
 // Healthcheck simples para confirmar backend no ar
 app.get('/', (req, res) => {
-  res.send('API de credenciamento rodando. Frontend: http://localhost:3000 | Backend: process.env.NEXT_PUBLIC_API_URL
-');
+  res.send('API de credenciamento rodando.');
 });
 
 // Cria o primeiro administrador do sistema (somente se ainda nao existir usuario)
