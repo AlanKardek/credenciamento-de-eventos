@@ -423,9 +423,9 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                 key={evento.id}
                 className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm hover:shadow-md transition-shadow"
               >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="space-y-3 flex-grow">
-                    <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-grow space-y-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                       <span className="inline-block rounded-md border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200">
                         E{evento.id}
                       </span>
@@ -437,7 +437,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                     </div>
 
                     <div>
-                      <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{evento.title}</h2>
+                      <h2 className="break-words text-lg font-semibold text-slate-900 dark:text-white">{evento.title}</h2>
                       <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                         <span className="font-medium">Data:</span> {formatDateBr(evento.date)} | <span className="font-medium">Criado em:</span> {formatDateBr(evento.createdAt)}
                       </p>
@@ -447,19 +447,19 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-start gap-2">
+                  <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-start">
                     <button
                       onClick={() => downloadReport(evento.id)}
-                      className="inline-flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors"
+                      className="order-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 sm:order-none sm:w-auto"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       <span>Relatório</span>
                     </button>
-                    <div className="flex flex-col gap-2">
+                    <div className="contents sm:flex sm:flex-col sm:gap-2">
                       <button
-                        className="inline-flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors"
+                        className="order-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 sm:order-none sm:w-auto"
                         title="QR Code"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -476,23 +476,23 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                           onClick={() =>
                             setOpenTransferEventId((current) => (current === evento.id ? null : evento.id))
                           }
-                          className="rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900 hover:bg-indigo-100 dark:hover:bg-indigo-800 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 transition-colors"
+                          className="order-4 w-full rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100 dark:border-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 dark:hover:bg-indigo-800 sm:order-none sm:w-auto"
                         >
                           Mover evento
                         </button>
                       ) : null}
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="contents sm:flex sm:flex-col sm:gap-2">
                       <button
                         onClick={() => router.push(`/eventos/${evento.id}`)}
-                        className="rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900 hover:bg-blue-100 dark:hover:bg-blue-800 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 transition-colors"
+                        className="order-1 w-full rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 sm:order-none sm:w-auto"
                       >
                         Abrir
                       </button>
                       <button
                         onClick={() => toggleArchive(evento)}
                         disabled={isProcessing}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900 hover:bg-amber-100 dark:hover:bg-amber-800 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                        className="order-5 col-span-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700 dark:bg-amber-900 dark:text-amber-300 dark:hover:bg-amber-800 sm:order-none sm:col-span-1 sm:w-auto"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                           <path d="M4 7h16m-2 0v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7m3-3h6l1 3H8l1-3Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -516,7 +516,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                             [evento.id]: event.target.value,
                           }))
                         }
-                        className="theme-input min-w-[260px] rounded-lg px-4 py-2 text-sm"
+                        className="theme-input w-full rounded-lg px-4 py-2 text-sm sm:w-auto sm:min-w-[260px]"
                       >
                         <option value="">Selecione um usuario</option>
                         {users.map((user) => (
@@ -529,7 +529,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                         type="button"
                         onClick={() => moveEventOwner(evento)}
                         disabled={movingEventId === evento.id}
-                        className="rounded-lg border border-indigo-700 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="w-full rounded-lg border border-indigo-700 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                       >
                         {movingEventId === evento.id ? "Movendo..." : "Confirmar movimentacao"}
                       </button>
