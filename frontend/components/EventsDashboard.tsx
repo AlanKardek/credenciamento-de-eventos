@@ -149,7 +149,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
         }
 
         if (!meResponse.ok || !eventsResponse.ok) {
-          throw new Error("Nao foi possivel carregar os eventos.");
+          throw new Error("Não foi possível carregar os eventos.");
         }
 
         const me = (await meResponse.json()) as MeResponse;
@@ -171,7 +171,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
           }
 
           if (!usersResponse.ok) {
-            throw new Error("Nao foi possivel carregar usuarios para transferencia.");
+            throw new Error("Não foi possível carregar usuários para transferência.");
           }
 
           managedUsers = (await usersResponse.json()) as ManagedUser[];
@@ -218,7 +218,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
       }
 
       if (!response.ok) {
-        throw new Error("Falha ao baixar relatorio.");
+        throw new Error("Falha ao baixar relatório.");
       }
 
       const blob = await response.blob();
@@ -235,7 +235,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
       document.body.removeChild(anchor);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao baixar relatorio.");
+      setError(err instanceof Error ? err.message : "Erro ao baixar relatório.");
     }
   }
 
@@ -277,7 +277,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
       }
 
       if (!response.ok) {
-        let message = "Nao foi possivel atualizar o evento.";
+        let message = "Não foi possível atualizar o evento.";
 
         try {
           const body = (await response.json()) as { error?: string };
@@ -346,7 +346,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
       }
 
       if (!response.ok) {
-        let message = "Nao foi possivel mover o evento.";
+        let message = "Não foi possível mover o evento.";
         try {
           const body = (await response.json()) as { error?: string };
           if (body?.error) {
@@ -384,7 +384,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
               <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
                 {archivedMode
                   ? "Eventos arquivados ficam separados da dashboard principal."
-                  : "Gerencie seus eventos e mova para arquivados quando necessario."}
+                  : "Gerencie seus eventos e mova para arquivados quando necessário."}
               </p>
             </div>
 
@@ -421,7 +421,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
             return (
               <article
                 key={evento.id}
-                className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm hover:shadow-md transition-shadow"
+                className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800 sm:p-6"
               >
                 <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-grow space-y-3">
@@ -437,11 +437,11 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                     </div>
 
                     <div>
-                      <h2 className="break-words text-lg font-semibold text-slate-900 dark:text-white">{evento.title}</h2>
-                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                      <h2 className="break-words text-base font-semibold text-slate-900 dark:text-white sm:text-lg">{evento.title}</h2>
+                      <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-400 sm:mt-2 sm:text-sm">
                         <span className="font-medium">Data:</span> {formatDateBr(evento.date)} | <span className="font-medium">Criado em:</span> {formatDateBr(evento.createdAt)}
                       </p>
-                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
                         <span className="font-medium">Local:</span> {evento.location || "Não informado"}
                       </p>
                     </div>
@@ -450,7 +450,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                   <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-start">
                     <button
                       onClick={() => downloadReport(evento.id)}
-                      className="order-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 sm:order-none sm:w-auto"
+                      className="order-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 sm:order-none sm:w-auto sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -459,7 +459,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                     </button>
                     <div className="contents sm:flex sm:flex-col sm:gap-2">
                       <button
-                        className="order-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 sm:order-none sm:w-auto"
+                        className="order-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 sm:order-none sm:w-auto sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
                         title="QR Code"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -476,7 +476,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                           onClick={() =>
                             setOpenTransferEventId((current) => (current === evento.id ? null : evento.id))
                           }
-                          className="order-4 w-full rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100 dark:border-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 dark:hover:bg-indigo-800 sm:order-none sm:w-auto"
+                          className="order-4 w-full rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-100 dark:border-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 dark:hover:bg-indigo-800 sm:order-none sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
                         >
                           Mover evento
                         </button>
@@ -485,14 +485,14 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                     <div className="contents sm:flex sm:flex-col sm:gap-2">
                       <button
                         onClick={() => router.push(`/eventos/${evento.id}`)}
-                        className="order-1 w-full rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 sm:order-none sm:w-auto"
+                        className="order-1 w-full rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 sm:order-none sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
                       >
                         Abrir
                       </button>
                       <button
                         onClick={() => toggleArchive(evento)}
                         disabled={isProcessing}
-                        className="order-5 col-span-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700 dark:bg-amber-900 dark:text-amber-300 dark:hover:bg-amber-800 sm:order-none sm:col-span-1 sm:w-auto"
+                        className="order-5 col-span-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700 dark:bg-amber-900 dark:text-amber-300 dark:hover:bg-amber-800 sm:order-none sm:col-span-1 sm:w-auto sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                           <path d="M4 7h16m-2 0v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7m3-3h6l1 3H8l1-3Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -518,7 +518,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                         }
                         className="theme-input w-full rounded-lg px-4 py-2 text-sm sm:w-auto sm:min-w-[260px]"
                       >
-                        <option value="">Selecione um usuario</option>
+                        <option value="">Selecione um usuário</option>
                         {users.map((user) => (
                           <option key={user.id} value={String(user.id)}>
                             {user.name} ({user.email})
@@ -531,7 +531,7 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                         disabled={movingEventId === evento.id}
                         className="w-full rounded-lg border border-indigo-700 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                       >
-                        {movingEventId === evento.id ? "Movendo..." : "Confirmar movimentacao"}
+                        {movingEventId === evento.id ? "Movendo..." : "Confirmar movimentação"}
                       </button>
                     </div>
                   </div>

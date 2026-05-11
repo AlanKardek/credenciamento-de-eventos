@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -143,7 +143,7 @@ function parseParticipantsImport(text: string) {
   const rows = parseDelimitedText(text);
 
   if (rows.length < 2) {
-    throw new Error("A planilha precisa ter cabecalho e ao menos um participante.");
+    throw new Error("A planilha precisa ter cabeçalho e ao menos um participante.");
   }
 
   const headerMap = rows[0].map((header) => IMPORT_HEADER_ALIASES[normalizeImportHeader(header)] || null);
@@ -175,7 +175,7 @@ function parseParticipantsImport(text: string) {
     });
 
     if (!participant.name || !participant.email || !participant.cpf) {
-      throw new Error(`Linha ${rowIndex + 2}: nome, email e cpf sao obrigatorios.`);
+      throw new Error(`Linha ${rowIndex + 2}: nome, email e cpf são obrigatórios.`);
     }
 
     return participant;
@@ -259,7 +259,7 @@ export default function EventDetailsPage() {
         }
 
         if (!eventResponse.ok || !participantsResponse.ok) {
-          throw new Error("Nao foi possivel carregar os dados do evento.");
+          throw new Error("Não foi possível carregar os dados do evento.");
         }
 
         const eventData = (await eventResponse.json()) as EventDetail;
@@ -282,7 +282,7 @@ export default function EventDetailsPage() {
 
     if (!Number.isInteger(eventId) || eventId <= 0) {
       setLoading(false);
-      setError("ID de evento invalido.");
+      setError("ID de evento inválido.");
       return;
     }
 
@@ -329,7 +329,7 @@ export default function EventDetailsPage() {
   }, [eventId]);
 
   const formatCategoryLabel = (value?: string | null) =>
-    value ? value.replace(/_/g, " ") : "Nao informado";
+    value ? value.replace(/_/g, " ") : "Não informado";
 
   const formatDateBr = (value?: string | null) => {
     if (!value) {
@@ -414,7 +414,7 @@ export default function EventDetailsPage() {
       }
 
       if (!response.ok) {
-        throw new Error("Falha ao baixar relatorio.");
+        throw new Error("Falha ao baixar relatório.");
       }
 
       const blob = await response.blob();
@@ -431,7 +431,7 @@ export default function EventDetailsPage() {
       document.body.removeChild(anchor);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao baixar relatorio.");
+      setError(err instanceof Error ? err.message : "Erro ao baixar relatório.");
     }
   };
 
@@ -534,7 +534,7 @@ export default function EventDetailsPage() {
     }
 
     if (!nextKey) {
-      setError("Informe um nome de categoria valido.");
+      setError("Informe um nome de categoria válido.");
       return;
     }
 
@@ -543,7 +543,7 @@ export default function EventDetailsPage() {
       participants.some((participant) => normalizeCategoryKey(participant.category || "") === nextKey);
 
     if (alreadyExists) {
-      setError("Essa categoria ja existe.");
+      setError("Essa categoria já existe.");
       return;
     }
 
@@ -565,7 +565,7 @@ export default function EventDetailsPage() {
     setSuccessMessage("");
 
     if (!trimmed || !nextKey) {
-      setError("Informe um nome valido para a categoria.");
+      setError("Informe um nome válido para a categoria.");
       return;
     }
 
@@ -577,7 +577,7 @@ export default function EventDetailsPage() {
       );
 
     if (duplicatedKey) {
-      setError("Ja existe outra categoria com esse nome.");
+      setError("Já existe outra categoria com esse nome.");
       return;
     }
 
@@ -610,11 +610,11 @@ export default function EventDetailsPage() {
         }
 
         if (response.status === 403) {
-          throw new Error("Sua conta nao tem permissao para editar categorias.");
+          throw new Error("Sua conta não tem permissão para editar categorias.");
         }
 
         if (!response.ok) {
-          let message = "Nao foi possivel atualizar a categoria.";
+          let message = "Não foi possível atualizar a categoria.";
           try {
             const body = (await response.json()) as { error?: string };
             if (body?.error) {
@@ -651,7 +651,7 @@ export default function EventDetailsPage() {
   const deleteCategory = async (categoryKey: string, label: string, hasParticipants: boolean) => {
     const confirmed = window.confirm(
       hasParticipants
-        ? `Excluir a categoria "${label}"? Os participantes dela serao movidos para Publico Geral.`
+        ? `Excluir a categoria "${label}"? Os participantes dela serão movidos para Público Geral.`
         : `Excluir a categoria "${label}"?`
     );
 
@@ -682,11 +682,11 @@ export default function EventDetailsPage() {
         }
 
         if (response.status === 403) {
-          throw new Error("Sua conta nao tem permissao para excluir categorias.");
+          throw new Error("Sua conta não tem permissão para excluir categorias.");
         }
 
         if (!response.ok) {
-          let message = "Nao foi possivel excluir a categoria.";
+          let message = "Não foi possível excluir a categoria.";
           try {
             const body = (await response.json()) as { error?: string };
             if (body?.error) {
@@ -895,16 +895,16 @@ export default function EventDetailsPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <div className="mx-auto max-w-7xl px-4 py-4 md:px-6">
+      <div className="mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-4 md:px-6">
         <section className="mb-4 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700 px-4 py-3">
-            <nav className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2 dark:border-slate-700 sm:gap-3 sm:px-4 sm:py-3">
+            <nav className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               {eventTabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id as EventTab)}
-                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`rounded-md px-2 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:py-2 sm:text-sm ${
                     activeTab === tab.id
                       ? "bg-blue-50 dark:bg-slate-700 text-blue-700 dark:text-blue-400"
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -917,13 +917,13 @@ export default function EventDetailsPage() {
 
             <Link
               href="/"
-              className="rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap transition-colors"
+              className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 whitespace-nowrap transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 sm:px-3 sm:py-2"
             >
-              ← Voltar
+              ? Voltar
             </Link>
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-3 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3">
             {!loading && !error && event ? (
               <>
                 <button
@@ -978,7 +978,7 @@ export default function EventDetailsPage() {
               placeholder="Buscar por nome, email ou instituição..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500 dark:focus:border-blue-500 sm:px-3 sm:py-2 sm:text-sm"
               autoFocus
             />
             {searchQuery && (
@@ -997,40 +997,40 @@ export default function EventDetailsPage() {
           <>
             {activeTab === "participants" ? (
               <>
-            <section className="mb-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-              <h1 className="mb-3 text-2xl font-bold text-slate-900 dark:text-white">{event.title}</h1>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <section className="mb-4 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800 sm:p-4">
+              <h1 className="mb-3 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">{event.title}</h1>
+              <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm md:grid-cols-4">
                 <div>
-                  <p className="theme-muted mb-1 text-xs font-semibold uppercase tracking-wide">Descrição</p>
+                  <p className="theme-muted mb-1 text-[11px] font-semibold uppercase tracking-wide sm:text-xs">Descrição</p>
                   <p className="text-slate-700 dark:text-slate-200">{event.description || "-"}</p>
                 </div>
                 <div>
-                  <p className="theme-muted mb-1 text-xs font-semibold uppercase tracking-wide">Organização</p>
+                  <p className="theme-muted mb-1 text-[11px] font-semibold uppercase tracking-wide sm:text-xs">Organização</p>
                   <p className="text-slate-700 dark:text-slate-200">{event.organizer || "-"}</p>
                 </div>
                 <div>
-                  <p className="theme-muted mb-1 text-xs font-semibold uppercase tracking-wide">Data</p>
+                  <p className="theme-muted mb-1 text-[11px] font-semibold uppercase tracking-wide sm:text-xs">Data</p>
                   <p className="text-slate-700 dark:text-slate-200">{formatDateBr(event.date)}</p>
                 </div>
                 <div>
-                  <p className="theme-muted mb-1 text-xs font-semibold uppercase tracking-wide">Horário</p>
+                  <p className="theme-muted mb-1 text-[11px] font-semibold uppercase tracking-wide sm:text-xs">Horário</p>
                   <p className="text-slate-700 dark:text-slate-200">{event.eventStart || "-"} até {event.eventEnd || "-"}</p>
                 </div>
               </div>
             </section>
 
             <section className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800 sm:p-4">
                 <p className="theme-muted uppercase tracking-wide text-xs mb-2">Total de Participantes</p>
-                <p className="text-4xl font-bold text-slate-900 dark:text-white">{totalParticipants}</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl">{totalParticipants}</p>
               </div>
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800 sm:p-4">
                 <p className="theme-muted uppercase tracking-wide text-xs mb-2">Check-ins Realizados</p>
-                <p className="text-4xl font-bold text-green-700 dark:text-green-300">{checkInCount}</p>
+                <p className="text-3xl font-bold text-green-700 dark:text-green-300 sm:text-4xl">{checkInCount}</p>
               </div>
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800 sm:p-4">
                 <p className="theme-muted uppercase tracking-wide text-xs mb-2">Taxa de Presença</p>
-                <p className="text-4xl font-bold text-slate-900 dark:text-white">{percentualCheckIn}%</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl">{percentualCheckIn}%</p>
               </div>
             </section>
 
@@ -1175,7 +1175,7 @@ export default function EventDetailsPage() {
                     ) : null}
 
                     {managedCategories.length === 0 ? (
-                      <p className="text-sm theme-muted">Ainda nao existem categorias cadastradas para este evento.</p>
+                      <p className="text-sm theme-muted">Ainda não existem categorias cadastradas para este evento.</p>
                     ) : (
                       <div className="space-y-3">
                         {managedCategories.map((category) => (
@@ -1197,7 +1197,7 @@ export default function EventDetailsPage() {
                                 <div className="mt-3 flex flex-wrap justify-between gap-3">
                                   <p className="text-xs theme-muted">
                                     {category.hasParticipants
-                                      ? `${category.count} participante(s) serao atualizados.`
+                                      ? `${category.count} participante(s) serão atualizados.`
                                       : "Categoria vazia, pronta para uso futuro."}
                                   </p>
                                   <div className="flex gap-2">
@@ -1282,7 +1282,7 @@ export default function EventDetailsPage() {
                     </div>
 
                     <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-                      <h3 className="mb-4 text-sm font-semibold uppercase">Distribuicao visual</h3>
+                      <h3 className="mb-4 text-sm font-semibold uppercase">Distribuição visual</h3>
                       {categorySummary.length === 0 ? (
                         <p className="text-sm theme-muted">Sem categorias registradas.</p>
                       ) : (
@@ -1308,7 +1308,7 @@ export default function EventDetailsPage() {
                     <p className="text-4xl font-bold text-amber-700 dark:text-amber-300">{participantsWithoutDocument}</p>
                   </div>
                   <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-                    <p className="theme-muted uppercase tracking-wide text-xs mb-2">Conclusao</p>
+                    <p className="theme-muted uppercase tracking-wide text-xs mb-2">Conclusão</p>
                     <p className="text-4xl font-bold text-slate-900 dark:text-white">{documentCompletion}%</p>
                   </div>
                 </section>
@@ -1319,7 +1319,7 @@ export default function EventDetailsPage() {
                     Pendencias no filtro atual: {participantsMissingDocument.length}
                   </p>
                   {filteredParticipants.length === 0 ? (
-                    <p className="text-sm theme-muted">Nenhum participante disponivel para conferência de documentos.</p>
+                    <p className="text-sm theme-muted">Nenhum participante disponível para conferência de documentos.</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full">
@@ -1328,7 +1328,7 @@ export default function EventDetailsPage() {
                             <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Nome</th>
                             <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">CPF</th>
                             <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide hidden md:table-cell">Email</th>
-                            <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Situacao</th>
+                            <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Situação</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1363,7 +1363,7 @@ export default function EventDetailsPage() {
                   <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Exportar participantes</h2>
                     <p className="mt-2 text-sm theme-muted">
-                      Baixe o relatorio completo do evento em CSV com dados de cadastro e check-in.
+                      Baixe o relatório completo do evento em CSV com dados de cadastro e check-in.
                     </p>
                     <button
                       onClick={downloadReport}
@@ -1374,9 +1374,9 @@ export default function EventDetailsPage() {
                   </div>
 
                   <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Modelo de importacao</h2>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Modelo de importação</h2>
                     <p className="mt-2 text-sm theme-muted">
-                      Baixe um modelo base para preparar planilhas de importacao de participantes.
+                      Baixe um modelo base para preparar planilhas de importação de participantes.
                     </p>
                     <button
                       onClick={downloadImportTemplate}
@@ -1391,7 +1391,7 @@ export default function EventDetailsPage() {
                   <h3 className="text-sm font-semibold uppercase text-slate-900 dark:text-white">Importacao em lote</h3>
                   <p className="mt-3 text-sm theme-muted">
                     Importe uma planilha CSV ou TSV com as colunas nome/name, email e cpf. As colunas telefone,
-                    instituicao, cargo, cidade, uf e categoria tambem serao adicionadas quando existirem.
+                    instituição, cargo, cidade, uf e categoria também serão adicionadas quando existirem.
                   </p>
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     <input
@@ -1436,3 +1436,7 @@ export default function EventDetailsPage() {
     </main>
   );
 }
+
+
+
+

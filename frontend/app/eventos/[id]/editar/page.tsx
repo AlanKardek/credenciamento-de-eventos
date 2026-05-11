@@ -73,7 +73,7 @@ export default function EditEventPage() {
         }
 
         if (!response.ok) {
-          throw new Error("Nao foi possivel carregar o evento.");
+          throw new Error("Não foi possível carregar o evento.");
         }
 
         const eventData = (await response.json()) as EventDetail;
@@ -105,7 +105,7 @@ export default function EditEventPage() {
 
     if (!Number.isInteger(eventId) || eventId <= 0) {
       setLoading(false);
-      setError("ID de evento invalido.");
+      setError("ID de evento inválido.");
       return;
     }
 
@@ -154,7 +154,7 @@ export default function EditEventPage() {
       }
 
       if (!response.ok) {
-        throw new Error("Nao foi possivel atualizar o evento.");
+        throw new Error("Não foi possível atualizar o evento.");
       }
 
       setSuccessMessage("Evento atualizado com sucesso!");
@@ -180,24 +180,24 @@ export default function EditEventPage() {
 
   return (
     <main className="theme-page">
-      <div className="mx-auto max-w-2xl px-4 py-6 md:px-6">
-        <div className="mb-6">
-          <Link href={`/eventos/${eventId}`} className="theme-secondary-button rounded-md px-4 py-2 text-sm">
+      <div className="mx-auto max-w-2xl px-3 py-4 sm:px-4 sm:py-6 md:px-6">
+        <div className="mb-4 sm:mb-6">
+          <Link href={`/eventos/${eventId}`} className="theme-secondary-button rounded-md px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm">
             Voltar para evento
           </Link>
         </div>
 
-        {error && <p className="theme-error-message mb-4 rounded-lg p-3 text-sm">{error}</p>}
-        {successMessage && <p className="theme-success-message mb-4 rounded-lg p-3 text-sm">{successMessage}</p>}
+        {error && <p className="theme-error-message mb-4 rounded-lg p-2.5 text-xs sm:p-3 sm:text-sm">{error}</p>}
+        {successMessage && <p className="theme-success-message mb-4 rounded-lg p-2.5 text-xs sm:p-3 sm:text-sm">{successMessage}</p>}
 
         {!error && event ? (
-          <section className="theme-panel rounded-2xl p-6">
-            <h1 className="mb-6 text-2xl font-semibold">Editar evento</h1>
+          <section className="theme-panel rounded-lg p-4 sm:rounded-2xl sm:p-6">
+            <h1 className="mb-4 text-xl font-semibold sm:mb-6 sm:text-2xl">Editar evento</h1>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-5">
               <div>
-                <label htmlFor="title" className="theme-label mb-2 block text-sm font-medium">
-                  Titulo *
+                <label htmlFor="title" className="theme-label mb-1 block text-xs font-medium sm:mb-2 sm:text-sm">
+                  Título *
                 </label>
                 <input
                   type="text"
@@ -206,29 +206,29 @@ export default function EditEventPage() {
                   value={formData.title}
                   onChange={handleChange}
                   required
-                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
-                  placeholder="Titulo do evento"
+                  className="theme-input w-full rounded-lg px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
+                  placeholder="Título do evento"
                 />
               </div>
 
               <div>
-                <label htmlFor="description" className="theme-label mb-2 block text-sm font-medium">
-                  Descricao
+                <label htmlFor="description" className="theme-label mb-1 block text-xs font-medium sm:mb-2 sm:text-sm">
+                  Descrição
                 </label>
                 <textarea
                   id="description"
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
-                  placeholder="Descricao do evento"
+                  className="theme-input w-full rounded-lg px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
+                  placeholder="Descrição do evento"
                   rows={3}
                 />
               </div>
 
               <div>
-                <label htmlFor="organizer" className="theme-label mb-2 block text-sm font-medium">
-                  Organizacao
+                <label htmlFor="organizer" className="theme-label mb-1 block text-xs font-medium sm:mb-2 sm:text-sm">
+                  Organização
                 </label>
                 <input
                   type="text"
@@ -236,14 +236,14 @@ export default function EditEventPage() {
                   name="organizer"
                   value={formData.organizer}
                   onChange={handleChange}
-                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
-                  placeholder="Nome da organizacao"
+                  className="theme-input w-full rounded-lg px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
+                  placeholder="Nome da organização"
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 gap-3 sm:gap-5 md:grid-cols-2">
                 <div>
-                  <label htmlFor="date" className="theme-label mb-2 block text-sm font-medium">
+                  <label htmlFor="date" className="theme-label mb-1 block text-xs font-medium sm:mb-2 sm:text-sm">
                     Data *
                   </label>
                   <input
@@ -253,13 +253,13 @@ export default function EditEventPage() {
                     value={formData.date}
                     onChange={handleChange}
                     required
-                    className="theme-input w-full rounded-lg px-4 py-2 text-sm"
+                    className="theme-input w-full rounded-lg px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="participantLimit" className="theme-label mb-2 block text-sm font-medium">
-                    Limite de Participantes
+                  <label htmlFor="participantLimit" className="theme-label mb-1 block text-xs font-medium sm:mb-2 sm:text-sm">
+                    Limite de participantes
                   </label>
                   <input
                     type="number"
@@ -267,17 +267,17 @@ export default function EditEventPage() {
                     name="participantLimit"
                     value={formData.participantLimit}
                     onChange={handleChange}
-                    className="theme-input w-full rounded-lg px-4 py-2 text-sm"
+                    className="theme-input w-full rounded-lg px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
                     placeholder="Deixe em branco para ilimitado"
                     min="1"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 gap-3 sm:gap-5 md:grid-cols-2">
                 <div>
-                  <label htmlFor="eventStart" className="theme-label mb-2 block text-sm font-medium">
-                    Hora de Inicio
+                  <label htmlFor="eventStart" className="theme-label mb-1 block text-xs font-medium sm:mb-2 sm:text-sm">
+                    Hora de início
                   </label>
                   <input
                     type="time"
@@ -285,13 +285,13 @@ export default function EditEventPage() {
                     name="eventStart"
                     value={formData.eventStart}
                     onChange={handleChange}
-                    className="theme-input w-full rounded-lg px-4 py-2 text-sm"
+                    className="theme-input w-full rounded-lg px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="eventEnd" className="theme-label mb-2 block text-sm font-medium">
-                    Hora de Termino
+                  <label htmlFor="eventEnd" className="theme-label mb-1 block text-xs font-medium sm:mb-2 sm:text-sm">
+                    Hora de término
                   </label>
                   <input
                     type="time"
@@ -299,13 +299,13 @@ export default function EditEventPage() {
                     name="eventEnd"
                     value={formData.eventEnd}
                     onChange={handleChange}
-                    className="theme-input w-full rounded-lg px-4 py-2 text-sm"
+                    className="theme-input w-full rounded-lg px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="location" className="theme-label mb-2 block text-sm font-medium">
+                <label htmlFor="location" className="theme-label mb-1 block text-xs font-medium sm:mb-2 sm:text-sm">
                   Local
                 </label>
                 <input
@@ -314,13 +314,13 @@ export default function EditEventPage() {
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
-                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
-                  placeholder="Endereco ou local do evento"
+                  className="theme-input w-full rounded-lg px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
+                  placeholder="Endereço ou local do evento"
                 />
               </div>
 
               <div>
-                <label htmlFor="status" className="theme-label mb-2 block text-sm font-medium">
+                <label htmlFor="status" className="theme-label mb-1 block text-xs font-medium sm:mb-2 sm:text-sm">
                   Status
                 </label>
                 <select
@@ -328,7 +328,7 @@ export default function EditEventPage() {
                   name="status"
                   value={formData.status}
                   onChange={handleChange}
-                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
+                  className="theme-input w-full rounded-lg px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
                 >
                   <option value="DRAFT">Rascunho</option>
                   <option value="OPEN">Aberto</option>
@@ -337,18 +337,18 @@ export default function EditEventPage() {
                 </select>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-2 pt-3 sm:gap-3 sm:pt-4">
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 rounded-lg border border-green-700 bg-green-600 px-6 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-lg border border-green-700 bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 sm:px-6 sm:py-2 sm:text-sm"
                 >
-                  {saving ? "Salvando..." : "Salvar alteracoes"}
+                  {saving ? "Salvando..." : "Salvar alterações"}
                 </button>
                 <button
                   type="button"
                   onClick={() => router.push(`/eventos/${eventId}`)}
-                  className="theme-secondary-button flex-1 rounded-lg px-6 py-2 text-sm font-semibold"
+                  className="theme-secondary-button flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold sm:px-6 sm:py-2 sm:text-sm"
                 >
                   Cancelar
                 </button>
