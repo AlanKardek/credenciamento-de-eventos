@@ -155,12 +155,62 @@ function parseParticipantCategory(value, defaultCategory = PARTICIPANT_CATEGORY.
     return defaultCategory;
   }
 
+  return parseCustomCategory(value);
+}
+
+function parseParticipantPayload(payload, rowNumber) {
+  const prefix = rowNumber ? `Linha ${rowNumber}: ` : '';
+
+  try {
+    return {
+      name: requireString(payload.name, 'name'),
+      email: requireEmail(payload.email),
+      cpf: requireCpf(payload.cpf),
+      phone: parseOptionalText(payload.phone, 'phone'),
+      institution: parseOptionalText(payload.institution, 'institution'),
+      jobTitle: parseOptionalText(payload.jobTitle, 'jobTitle'),
+      city: parseOptionalText(payload.city, 'city'),
+      uf: parseOptionalUf(payload.uf),
+      category: parseParticipantCategory(payload.category)
+    };
+  } catch (error) {
+    if (error instanceof HttpError && rowNumber) {
+      throw new HttpError(error.status, `${prefix}${error.message}`);
+    }
+
+    throw error;
+  }
+}
+
+function ensureNoImportDuplicates(participants) {
+  const emails = new Set();
+  const cpfs = new Set();
+
+  participants.forEach((participant, index) => {
+    const rowNumber = index + 2;
+
+    if (emails.has(participant.email)) {
+      throw new HttpError(400, `Linha ${rowNumber}: email duplicado na planilha.`);
+    }
+    emails.add(participant.email);
+
+    if (cpfs.has(participant.cpf)) {
+      throw new HttpError(400, `Linha ${rowNumber}: CPF duplicado na planilha.`);
+    }
+    cpfs.add(participant.cpf);
+  });
+}
+
+function parseCustomCategory(value) {
   const raw = requireString(value, 'categoria');
   const normalized = normalizeCategoryInput(raw);
-  const allowed = Object.values(PARTICIPANT_CATEGORY);
 
-  if (!allowed.includes(normalized)) {
-    throw new HttpError(400, 'Campo "categoria" invalido. Use: estudante, expositor, staff ou publico geral.');
+  if (!normalized) {
+    throw new HttpError(400, 'Campo "categoria" invalido.');
+  }
+
+  if (normalized.length > 60) {
+    throw new HttpError(400, 'Campo "categoria" deve ter no maximo 60 caracteres.');
   }
 
   return normalized;
@@ -179,6 +229,20 @@ function parseOptionalEventStatus(value) {
   const allowed = Object.values(EVENT_STATUS);
   if (!allowed.includes(normalized)) {
     throw new HttpError(400, `Campo "status" deve ser um de: ${allowed.join(', ')}.`);
+  }
+
+  return normalized;
+}
+
+function parseRole(value) {
+  if (typeof value !== 'string') {
+    throw new HttpError(400, 'Campo "role" invalido.');
+  }
+
+  const normalized = value.toUpperCase();
+  const allowed = Object.values(ROLES);
+  if (!allowed.includes(normalized)) {
+    throw new HttpError(400, `Campo "role" deve ser um de: ${allowed.join(', ')}.`);
   }
 
   return normalized;
@@ -251,6 +315,52 @@ function authorizeRoles(...roles) {
 
     next();
   };
+}
+
+function eventOwnerWhere(req, eventId) {
+  if (req.user.role === ROLES.ADMIN) {
+    return { id: eventId };
+  }
+
+  return {
+    id: eventId,
+    ownerUserId: req.user.id
+  };
+}
+
+async function requireOwnedEvent(req, eventId, select) {
+  const event = await prisma.event.findFirst({
+    where: eventOwnerWhere(req, eventId),
+    ...(select ? { select } : {})
+  });
+
+  if (!event) {
+    throw new HttpError(404, 'Evento nao encontrado.');
+  }
+
+  return event;
+}
+
+async function requireOwnedParticipant(req, participantId, select) {
+  const where = req.user.role === ROLES.ADMIN
+    ? { id: participantId }
+    : {
+        id: participantId,
+        event: {
+          ownerUserId: req.user.id
+        }
+      };
+
+  const participant = await prisma.participant.findFirst({
+    where,
+    ...(select ? { select } : {})
+  });
+
+  if (!participant) {
+    throw new HttpError(404, 'Participante nao encontrado.');
+  }
+
+  return participant;
 }
 
 // Healthcheck simples para confirmar backend no ar
@@ -384,8 +494,90 @@ app.post('/admin/users/staff', authenticate, authorizeRoles(ROLES.ADMIN), async 
   res.status(201).json(sanitizeUser(staff));
 });
 
-// ADMIN: cria evento
-app.post('/admin/events', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+// ADMIN: cria conta de cliente com permissao para gerenciar os proprios eventos
+app.post('/admin/users/client', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+  const name = requireString(req.body.name, 'name');
+  const email = requireEmail(req.body.email);
+  const password = requireString(req.body.password, 'password');
+
+  if (password.length < 6) {
+    throw new HttpError(400, 'A senha deve ter no minimo 6 caracteres.');
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const client = await prisma.user.create({
+    data: {
+      name,
+      email,
+      passwordHash,
+      role: ROLES.ADMIN
+    }
+  });
+
+  res.status(201).json(sanitizeUser(client));
+});
+
+// ADMIN: lista usuarios para gerenciamento
+app.get('/admin/users', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+  const users = await prisma.user.findMany({
+    orderBy: { id: 'asc' },
+    include: {
+      _count: {
+        select: {
+          ownedEvents: true,
+          checkInActions: true
+        }
+      }
+    }
+  });
+
+  res.status(200).json(users.map((user) => ({
+    ...sanitizeUser(user),
+    ownedEventsCount: user._count.ownedEvents,
+    checkInActionsCount: user._count.checkInActions
+  })));
+});
+
+// ADMIN: atualiza permissao e dados de login de outro usuario
+app.put('/admin/users/:id', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+  const userId = parsePositiveInt(req.params.id);
+  if (!userId) {
+    throw new HttpError(400, 'Parametro "id" invalido.');
+  }
+
+  if (userId === req.user.id) {
+    throw new HttpError(400, 'Use a tela de perfil para alterar a propria conta.');
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new HttpError(404, 'Usuario nao encontrado.');
+  }
+
+  const name = requireString(req.body.name, 'name');
+  const email = requireEmail(req.body.email);
+  const role = parseRole(req.body.role);
+  const password = parseOptionalText(req.body.password, 'password');
+
+  if (password && password.length < 6) {
+    throw new HttpError(400, 'A senha deve ter no minimo 6 caracteres.');
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name,
+      email,
+      role,
+      ...(password ? { passwordHash: await bcrypt.hash(password, 10) } : {})
+    }
+  });
+
+  res.status(200).json(sanitizeUser(updatedUser));
+});
+
+// ADMIN/STAFF: cria evento proprio
+app.post('/admin/events', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
   const title = requireString(req.body.title, 'title');
   const description = parseOptionalText(req.body.description, 'description');
   const organizer = parseOptionalText(req.body.organizer, 'organizer');
@@ -401,7 +593,18 @@ app.post('/admin/events', authenticate, authorizeRoles(ROLES.ADMIN), async (req,
   }
 
   const event = await prisma.event.create({
-    data: { title, description, organizer, participantLimit, date, eventStart, eventEnd, location, status }
+    data: {
+      title,
+      description,
+      organizer,
+      participantLimit,
+      date,
+      eventStart,
+      eventEnd,
+      location,
+      status,
+      ownerUserId: req.user.id
+    }
   });
 
   res.status(201).json(event);
@@ -409,7 +612,10 @@ app.post('/admin/events', authenticate, authorizeRoles(ROLES.ADMIN), async (req,
 
 // ADMIN/STAFF: lista eventos
 app.get('/events', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
-  const events = await prisma.event.findMany({ orderBy: { id: 'desc' } });
+  const events = await prisma.event.findMany({
+    ...(req.user.role === ROLES.ADMIN ? {} : { where: { ownerUserId: req.user.id } }),
+    orderBy: { id: 'desc' }
+  });
   res.status(200).json(events);
 });
 
@@ -420,16 +626,13 @@ app.get('/events/:id', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), a
     throw new HttpError(400, 'Parametro "id" invalido.');
   }
 
-  const event = await prisma.event.findUnique({ where: { id: eventId } });
-  if (!event) {
-    throw new HttpError(404, 'Evento nao encontrado.');
-  }
+  const event = await requireOwnedEvent(req, eventId);
 
   res.status(200).json(event);
 });
 
-// ADMIN: atualiza evento
-app.put('/admin/events/:id', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+// ADMIN/STAFF: atualiza evento proprio
+app.put('/admin/events/:id', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
   const eventId = parsePositiveInt(req.params.id);
   if (!eventId) {
     throw new HttpError(400, 'Parametro "id" invalido.');
@@ -449,10 +652,7 @@ app.put('/admin/events/:id', authenticate, authorizeRoles(ROLES.ADMIN), async (r
     throw new HttpError(400, 'Campo "date" deve estar no formato YYYY-MM-DD.');
   }
 
-  const existingEvent = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } });
-  if (!existingEvent) {
-    throw new HttpError(404, 'Evento nao encontrado.');
-  }
+  await requireOwnedEvent(req, eventId, { id: true });
 
   const event = await prisma.event.update({
     where: { id: eventId },
@@ -462,6 +662,36 @@ app.put('/admin/events/:id', authenticate, authorizeRoles(ROLES.ADMIN), async (r
   res.status(200).json(event);
 });
 
+// ADMIN: transfere a propriedade de um evento para outra conta de acesso
+app.patch('/admin/events/:id/owner', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+  const eventId = parsePositiveInt(req.params.id);
+  if (!eventId) {
+    throw new HttpError(400, 'Parametro "id" invalido.');
+  }
+
+  const targetUserId = parsePositiveInt(req.body.targetUserId);
+  if (!targetUserId) {
+    throw new HttpError(400, 'Campo "targetUserId" invalido.');
+  }
+
+  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!event) {
+    throw new HttpError(404, 'Evento nao encontrado.');
+  }
+
+  const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+  if (!targetUser) {
+    throw new HttpError(404, 'Conta de destino nao encontrada.');
+  }
+
+  const updated = await prisma.event.update({
+    where: { id: eventId },
+    data: { ownerUserId: targetUserId }
+  });
+
+  res.status(200).json(updated);
+});
+
 // ADMIN/STAFF: lista participantes de um evento
 app.get('/events/:id/participants', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
   const eventId = parsePositiveInt(req.params.id);
@@ -469,10 +699,7 @@ app.get('/events/:id/participants', authenticate, authorizeRoles(ROLES.ADMIN, RO
     throw new HttpError(400, 'Parametro "id" invalido.');
   }
 
-  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } });
-  if (!event) {
-    throw new HttpError(404, 'Evento nao encontrado.');
-  }
+  await requireOwnedEvent(req, eventId, { id: true });
 
   const participants = await prisma.participant.findMany({
     where: { eventId },
@@ -501,10 +728,7 @@ app.get('/events/:id/participants/search', authenticate, authorizeRoles(ROLES.AD
   }
   const limit = Math.min(rawLimit, 100);
 
-  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } });
-  if (!event) {
-    throw new HttpError(404, 'Evento nao encontrado.');
-  }
+  await requireOwnedEvent(req, eventId, { id: true });
 
   const participants = await prisma.participant.findMany({
     where: {
@@ -522,17 +746,14 @@ app.get('/events/:id/participants/search', authenticate, authorizeRoles(ROLES.AD
   res.status(200).json(participants);
 });
 
-// ADMIN: remove evento e dados vinculados em transacao
-app.delete('/admin/events/:id', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+// ADMIN/STAFF: remove evento proprio e dados vinculados em transacao
+app.delete('/admin/events/:id', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
   const eventId = parsePositiveInt(req.params.id);
   if (!eventId) {
     throw new HttpError(400, 'Parametro "id" invalido.');
   }
 
-  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } });
-  if (!event) {
-    throw new HttpError(404, 'Evento nao encontrado.');
-  }
+  await requireOwnedEvent(req, eventId, { id: true });
 
   await prisma.$transaction([
     prisma.checkInLog.deleteMany({ where: { eventId } }),
@@ -543,37 +764,89 @@ app.delete('/admin/events/:id', authenticate, authorizeRoles(ROLES.ADMIN), async
   res.status(204).send();
 });
 
-// ADMIN: cria participante vinculado ao evento
-app.post('/admin/participants', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res) => {
-  const name = requireString(req.body.name, 'name');
-  const email = requireEmail(req.body.email);
-  const cpf = requireCpf(req.body.cpf);
-  const phone = parseOptionalText(req.body.phone, 'phone');
-  const institution = parseOptionalText(req.body.institution, 'institution');
-  const jobTitle = parseOptionalText(req.body.jobTitle, 'jobTitle');
-  const city = parseOptionalText(req.body.city, 'city');
-  const uf = parseOptionalUf(req.body.uf);
-  const category = parseParticipantCategory(req.body.category);
+// ADMIN/STAFF: cria participante vinculado ao evento proprio
+app.post('/admin/participants', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
+  const participantData = parseParticipantPayload(req.body);
   const eventId = parsePositiveInt(req.body.eventId);
 
   if (!eventId) {
     throw new HttpError(400, 'Campo "eventId" invalido.');
   }
 
-  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } });
-  if (!event) {
-    throw new HttpError(404, 'Evento nao encontrado para associar participante.');
-  }
+  await requireOwnedEvent(req, eventId, { id: true });
 
   const participant = await prisma.participant.create({
-    data: { name, email, cpf, phone, institution, jobTitle, city, uf, category, eventId }
+    data: { ...participantData, eventId }
   });
 
   res.status(201).json(participant);
 });
 
-// ADMIN: atualiza participante
-app.put('/admin/participants/:id', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+// ADMIN/STAFF: importa participantes em lote para um evento proprio
+app.post('/admin/events/:id/participants/import', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
+  const eventId = parsePositiveInt(req.params.id);
+  if (!eventId) {
+    throw new HttpError(400, 'Parametro "id" invalido.');
+  }
+
+  if (!Array.isArray(req.body.participants)) {
+    throw new HttpError(400, 'Campo "participants" deve ser uma lista.');
+  }
+
+  if (req.body.participants.length === 0) {
+    throw new HttpError(400, 'A planilha nao possui participantes para importar.');
+  }
+
+  if (req.body.participants.length > 1000) {
+    throw new HttpError(400, 'Importe no maximo 1000 participantes por arquivo.');
+  }
+
+  await requireOwnedEvent(req, eventId, { id: true });
+
+  const participantsToImport = req.body.participants.map((participant, index) =>
+    parseParticipantPayload(participant, index + 2)
+  );
+  ensureNoImportDuplicates(participantsToImport);
+
+  const existingParticipants = await prisma.participant.findMany({
+    where: {
+      eventId,
+      OR: [
+        { email: { in: participantsToImport.map((participant) => participant.email) } },
+        { cpf: { in: participantsToImport.map((participant) => participant.cpf) } }
+      ]
+    },
+    select: { email: true, cpf: true }
+  });
+
+  if (existingParticipants.length > 0) {
+    const existingEmails = new Set(existingParticipants.map((participant) => participant.email));
+    const existingCpfs = new Set(existingParticipants.map((participant) => participant.cpf).filter(Boolean));
+    const duplicatedRowIndex = participantsToImport.findIndex((participant) =>
+      existingEmails.has(participant.email) || existingCpfs.has(participant.cpf)
+    );
+    const duplicatedParticipant = participantsToImport[duplicatedRowIndex];
+    const duplicatedField = existingEmails.has(duplicatedParticipant.email) ? 'email' : 'CPF';
+
+    throw new HttpError(409, `Linha ${duplicatedRowIndex + 2}: ${duplicatedField} ja cadastrado neste evento.`);
+  }
+
+  const createdParticipants = await prisma.$transaction(
+    participantsToImport.map((participant) =>
+      prisma.participant.create({
+        data: { ...participant, eventId }
+      })
+    )
+  );
+
+  res.status(201).json({
+    imported: createdParticipants.length,
+    participants: createdParticipants
+  });
+});
+
+// ADMIN/STAFF: atualiza participante de evento proprio
+app.put('/admin/participants/:id', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
   const participantId = parsePositiveInt(req.params.id);
   if (!participantId) {
     throw new HttpError(400, 'Parametro "id" invalido.');
@@ -589,14 +862,7 @@ app.put('/admin/participants/:id', authenticate, authorizeRoles(ROLES.ADMIN), as
   const uf = parseOptionalUf(req.body.uf);
   const category = parseParticipantCategory(req.body.category);
 
-  const participant = await prisma.participant.findUnique({
-    where: { id: participantId },
-    select: { id: true }
-  });
-
-  if (!participant) {
-    throw new HttpError(404, 'Participante nao encontrado.');
-  }
+  await requireOwnedParticipant(req, participantId, { id: true });
 
   const updatedParticipant = await prisma.participant.update({
     where: { id: participantId },
@@ -604,6 +870,62 @@ app.put('/admin/participants/:id', authenticate, authorizeRoles(ROLES.ADMIN), as
   });
 
   res.status(200).json(updatedParticipant);
+});
+
+// ADMIN/STAFF: renomeia uma categoria em todos os participantes do evento proprio
+app.patch('/admin/events/:id/categories/:categoryKey', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
+  const eventId = parsePositiveInt(req.params.id);
+  if (!eventId) {
+    throw new HttpError(400, 'Parametro "id" invalido.');
+  }
+
+  const currentCategory = normalizeCategoryInput(requireString(req.params.categoryKey, 'categoryKey'));
+  if (!currentCategory) {
+    throw new HttpError(400, 'Parametro "categoryKey" invalido.');
+  }
+
+  const nextCategory = parseCustomCategory(req.body.category);
+
+  await requireOwnedEvent(req, eventId, { id: true });
+
+  const updated = await prisma.participant.updateMany({
+    where: {
+      eventId,
+      category: currentCategory
+    },
+    data: {
+      category: nextCategory
+    }
+  });
+
+  res.status(200).json({ category: nextCategory, updatedCount: updated.count });
+});
+
+// ADMIN/STAFF: exclui uma categoria do evento proprio movendo participantes para PUBLICO_GERAL
+app.delete('/admin/events/:id/categories/:categoryKey', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
+  const eventId = parsePositiveInt(req.params.id);
+  if (!eventId) {
+    throw new HttpError(400, 'Parametro "id" invalido.');
+  }
+
+  const category = normalizeCategoryInput(requireString(req.params.categoryKey, 'categoryKey'));
+  if (!category) {
+    throw new HttpError(400, 'Parametro "categoryKey" invalido.');
+  }
+
+  await requireOwnedEvent(req, eventId, { id: true });
+
+  const updated = await prisma.participant.updateMany({
+    where: {
+      eventId,
+      category
+    },
+    data: {
+      category: PARTICIPANT_CATEGORY.PUBLICO_GERAL
+    }
+  });
+
+  res.status(200).json({ movedTo: PARTICIPANT_CATEGORY.PUBLICO_GERAL, updatedCount: updated.count });
 });
 
 // STAFF/ADMIN: faz check-in e registra auditoria
@@ -615,14 +937,7 @@ app.patch('/staff/participants/:id/check-in', authenticate, authorizeRoles(ROLES
 
   const checkIn = req.body.checkIn === undefined ? true : requireBoolean(req.body.checkIn, 'checkIn');
 
-  const participant = await prisma.participant.findUnique({
-    where: { id: participantId },
-    select: { id: true, checkIn: true, eventId: true }
-  });
-
-  if (!participant) {
-    throw new HttpError(404, 'Participante nao encontrado.');
-  }
+  const participant = await requireOwnedParticipant(req, participantId, { id: true, checkIn: true, eventId: true });
 
   if (participant.checkIn === checkIn) {
     throw new HttpError(409, checkIn ? 'Participante ja esta com check-in ativo.' : 'Participante ja esta sem check-in.');
@@ -654,21 +969,14 @@ app.patch('/staff/participants/:id/check-in', authenticate, authorizeRoles(ROLES
   res.status(200).json(updatedParticipant);
 });
 
-// ADMIN: remove participante e logs de check-in
-app.delete('/admin/participants/:id', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+// ADMIN/STAFF: remove participante de evento proprio e logs de check-in
+app.delete('/admin/participants/:id', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
   const participantId = parsePositiveInt(req.params.id);
   if (!participantId) {
     throw new HttpError(400, 'Parametro "id" invalido.');
   }
 
-  const participant = await prisma.participant.findUnique({
-    where: { id: participantId },
-    select: { id: true }
-  });
-
-  if (!participant) {
-    throw new HttpError(404, 'Participante nao encontrado.');
-  }
+  await requireOwnedParticipant(req, participantId, { id: true });
 
   await prisma.$transaction([
     prisma.checkInLog.deleteMany({ where: { participantId } }),
@@ -685,10 +993,7 @@ app.get('/admin/events/:id/check-in-logs', authenticate, authorizeRoles(ROLES.AD
     throw new HttpError(400, 'Parametro "id" invalido.');
   }
 
-  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } });
-  if (!event) {
-    throw new HttpError(404, 'Evento nao encontrado.');
-  }
+  await requireOwnedEvent(req, eventId, { id: true });
 
   const logs = await prisma.checkInLog.findMany({
     where: { eventId },
@@ -709,10 +1014,7 @@ app.get('/events/:id/report.csv', authenticate, authorizeRoles(ROLES.ADMIN, ROLE
     throw new HttpError(400, 'Parametro "id" invalido.');
   }
 
-  const event = await prisma.event.findUnique({ where: { id: eventId } });
-  if (!event) {
-    throw new HttpError(404, 'Evento nao encontrado.');
-  }
+  const event = await requireOwnedEvent(req, eventId);
 
   const participants = await prisma.participant.findMany({
     where: { eventId },
@@ -761,9 +1063,13 @@ app.get('/events/:id/report.csv', authenticate, authorizeRoles(ROLES.ADMIN, ROLE
 
 // ADMIN/STAFF: dados agregados para dashboard
 app.get('/dashboard', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
-  const totalEventos = await prisma.event.count();
-  const totalParticipantes = await prisma.participant.count();
-  const totalCheckIns = await prisma.participant.count({ where: { checkIn: true } });
+  const totalEventos = await prisma.event.count({ where: { ownerUserId: req.user.id } });
+  const totalParticipantes = await prisma.participant.count({
+    where: { event: { ownerUserId: req.user.id } }
+  });
+  const totalCheckIns = await prisma.participant.count({
+    where: { checkIn: true, event: { ownerUserId: req.user.id } }
+  });
 
   res.status(200).json({
     eventos: totalEventos,

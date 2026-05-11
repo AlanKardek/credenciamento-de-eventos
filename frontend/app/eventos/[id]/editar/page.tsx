@@ -170,33 +170,33 @@ export default function EditEventPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#111318] text-white">
+      <main className="theme-page">
         <div className="mx-auto max-w-2xl px-4 py-6 md:px-6">
-          <p className="text-sm text-[#b8bfd1]">Carregando...</p>
+          <p className="theme-muted text-sm">Carregando...</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#111318] text-white">
+    <main className="theme-page">
       <div className="mx-auto max-w-2xl px-4 py-6 md:px-6">
         <div className="mb-6">
-          <Link href={`/eventos/${eventId}`} className="rounded-md border border-[#3f4658] bg-[#232834] px-4 py-2 text-sm text-[#d3d8e4] hover:bg-[#2a3040]">
+          <Link href={`/eventos/${eventId}`} className="theme-secondary-button rounded-md px-4 py-2 text-sm">
             Voltar para evento
           </Link>
         </div>
 
-        {error && <p className="mb-4 text-sm text-[#f5a5a5]">{error}</p>}
-        {successMessage && <p className="mb-4 text-sm text-[#ddf7e7]">{successMessage}</p>}
+        {error && <p className="theme-error-message mb-4 rounded-lg p-3 text-sm">{error}</p>}
+        {successMessage && <p className="theme-success-message mb-4 rounded-lg p-3 text-sm">{successMessage}</p>}
 
         {!error && event ? (
-          <section className="rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-6">
+          <section className="theme-panel rounded-2xl p-6">
             <h1 className="mb-6 text-2xl font-semibold">Editar evento</h1>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="title" className="theme-label mb-2 block text-sm font-medium">
                   Titulo *
                 </label>
                 <input
@@ -206,13 +206,13 @@ export default function EditEventPage() {
                   value={formData.title}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="Titulo do evento"
                 />
               </div>
 
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="description" className="theme-label mb-2 block text-sm font-medium">
                   Descricao
                 </label>
                 <textarea
@@ -220,14 +220,14 @@ export default function EditEventPage() {
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="Descricao do evento"
                   rows={3}
                 />
               </div>
 
               <div>
-                <label htmlFor="organizer" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="organizer" className="theme-label mb-2 block text-sm font-medium">
                   Organizacao
                 </label>
                 <input
@@ -236,14 +236,14 @@ export default function EditEventPage() {
                   name="organizer"
                   value={formData.organizer}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="Nome da organizacao"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label htmlFor="date" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                  <label htmlFor="date" className="theme-label mb-2 block text-sm font-medium">
                     Data *
                   </label>
                   <input
@@ -253,12 +253,12 @@ export default function EditEventPage() {
                     value={formData.date}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] focus:border-[#2f61ff] focus:outline-none"
+                    className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="participantLimit" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                  <label htmlFor="participantLimit" className="theme-label mb-2 block text-sm font-medium">
                     Limite de Participantes
                   </label>
                   <input
@@ -267,7 +267,7 @@ export default function EditEventPage() {
                     name="participantLimit"
                     value={formData.participantLimit}
                     onChange={handleChange}
-                    className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                    className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                     placeholder="Deixe em branco para ilimitado"
                     min="1"
                   />
@@ -276,7 +276,7 @@ export default function EditEventPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label htmlFor="eventStart" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                  <label htmlFor="eventStart" className="theme-label mb-2 block text-sm font-medium">
                     Hora de Inicio
                   </label>
                   <input
@@ -285,12 +285,12 @@ export default function EditEventPage() {
                     name="eventStart"
                     value={formData.eventStart}
                     onChange={handleChange}
-                    className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] focus:border-[#2f61ff] focus:outline-none"
+                    className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="eventEnd" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                  <label htmlFor="eventEnd" className="theme-label mb-2 block text-sm font-medium">
                     Hora de Termino
                   </label>
                   <input
@@ -299,13 +299,13 @@ export default function EditEventPage() {
                     name="eventEnd"
                     value={formData.eventEnd}
                     onChange={handleChange}
-                    className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] focus:border-[#2f61ff] focus:outline-none"
+                    className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="location" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="location" className="theme-label mb-2 block text-sm font-medium">
                   Local
                 </label>
                 <input
@@ -314,13 +314,13 @@ export default function EditEventPage() {
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="Endereco ou local do evento"
                 />
               </div>
 
               <div>
-                <label htmlFor="status" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="status" className="theme-label mb-2 block text-sm font-medium">
                   Status
                 </label>
                 <select
@@ -328,7 +328,7 @@ export default function EditEventPage() {
                   name="status"
                   value={formData.status}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                 >
                   <option value="DRAFT">Rascunho</option>
                   <option value="OPEN">Aberto</option>
@@ -341,14 +341,14 @@ export default function EditEventPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 rounded-lg border border-[#2f9e5f] bg-[#1d6a3f] px-6 py-2 text-sm font-semibold text-[#ddf7e7] hover:bg-[#247a4a] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-lg border border-green-700 bg-green-600 px-6 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? "Salvando..." : "Salvar alteracoes"}
                 </button>
                 <button
                   type="button"
                   onClick={() => router.push(`/eventos/${eventId}`)}
-                  className="flex-1 rounded-lg border border-[#3f4658] bg-[#232834] px-6 py-2 text-sm font-semibold text-[#d3d8e4] hover:bg-[#2a3040]"
+                  className="theme-secondary-button flex-1 rounded-lg px-6 py-2 text-sm font-semibold"
                 >
                   Cancelar
                 </button>
@@ -360,3 +360,4 @@ export default function EditEventPage() {
     </main>
   );
 }
+

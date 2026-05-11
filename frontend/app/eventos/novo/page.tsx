@@ -7,7 +7,10 @@ import { API_BASE_URL, TOKEN_STORAGE_KEY } from "@/app/constants/auth";
 
 export default function NewEventPage() {
   const router = useRouter();
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(() =>
+    typeof window === "undefined" ? "" : window.localStorage.getItem(TOKEN_STORAGE_KEY) || ""
+  );
+  const [authReady, setAuthReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
@@ -30,6 +33,7 @@ export default function NewEventPage() {
       return;
     }
     setToken(savedToken);
+    setAuthReady(true);
   }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -71,10 +75,14 @@ export default function NewEventPage() {
         }),
       });
 
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         window.localStorage.removeItem(TOKEN_STORAGE_KEY);
         router.replace("/login");
         return;
+      }
+
+      if (response.status === 403) {
+        throw new Error("Sua conta nao tem permissao para criar eventos.");
       }
 
       if (!response.ok) {
@@ -97,32 +105,32 @@ export default function NewEventPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#111318] text-white">
+    <main className="theme-page">
       <div className="mx-auto max-w-3xl px-4 py-6 md:px-6">
         <div className="mb-6">
-          <Link href="/" className="rounded-md border border-[#3f4658] bg-[#232834] px-4 py-2 text-sm text-[#d3d8e4] hover:bg-[#2a3040]">
+          <Link href="/" className="theme-secondary-button rounded-md px-4 py-2 text-sm">
             Voltar para dashboard
           </Link>
         </div>
 
-        <section className="rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-6">
+        <section className="theme-panel rounded-2xl p-6">
           <h1 className="mb-5 text-2xl font-semibold">Criacao de evento</h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="title" className="mb-1 block text-sm font-semibold tracking-wide text-[#f2f5ff]">
+              <label htmlFor="title" className="theme-label mb-1 block text-sm font-semibold tracking-wide">
                 Nome do evento
               </label>
               <input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                className="w-full rounded-md border border-[#3f4658] bg-[#232834] px-3 py-2 text-sm text-[#dbe0ec] outline-none focus:border-[#4e70ff]"
+                className="theme-input w-full rounded-md px-3 py-2 text-sm"
               />
             </div>
 
             <div>
-              <label htmlFor="description" className="mb-1 block text-sm font-semibold tracking-wide text-[#f2f5ff]">
+              <label htmlFor="description" className="theme-label mb-1 block text-sm font-semibold tracking-wide">
                 Descricao
               </label>
               <textarea
@@ -130,25 +138,25 @@ export default function NewEventPage() {
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 rows={4}
-                className="w-full rounded-md border border-[#3f4658] bg-[#232834] px-3 py-2 text-sm text-[#dbe0ec] outline-none focus:border-[#4e70ff]"
+                className="theme-input w-full rounded-md px-3 py-2 text-sm"
               />
             </div>
 
             <div>
-              <label htmlFor="organizer" className="mb-1 block text-sm font-semibold tracking-wide text-[#f2f5ff]">
+              <label htmlFor="organizer" className="theme-label mb-1 block text-sm font-semibold tracking-wide">
                 Organizacao responsavel
               </label>
               <input
                 id="organizer"
                 value={formData.organizer}
                 onChange={(e) => setFormData((prev) => ({ ...prev, organizer: e.target.value }))}
-                className="w-full rounded-md border border-[#3f4658] bg-[#232834] px-3 py-2 text-sm text-[#dbe0ec] outline-none focus:border-[#4e70ff]"
+                className="theme-input w-full rounded-md px-3 py-2 text-sm"
               />
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div>
-                <label htmlFor="date" className="mb-1 block text-sm font-semibold tracking-wide text-[#f2f5ff]">
+                <label htmlFor="date" className="theme-label mb-1 block text-sm font-semibold tracking-wide">
                   Data do evento
                 </label>
                 <input
@@ -156,11 +164,11 @@ export default function NewEventPage() {
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
-                  className="w-full rounded-md border border-[#3f4658] bg-[#232834] px-3 py-2 text-sm text-[#dbe0ec] outline-none focus:border-[#4e70ff]"
+                  className="theme-input w-full rounded-md px-3 py-2 text-sm"
                 />
               </div>
               <div>
-                <label htmlFor="eventStart" className="mb-1 block text-sm font-semibold tracking-wide text-[#f2f5ff]">
+                <label htmlFor="eventStart" className="theme-label mb-1 block text-sm font-semibold tracking-wide">
                   Inicio do evento
                 </label>
                 <input
@@ -168,11 +176,11 @@ export default function NewEventPage() {
                   type="time"
                   value={formData.eventStart}
                   onChange={(e) => setFormData((prev) => ({ ...prev, eventStart: e.target.value }))}
-                  className="w-full rounded-md border border-[#3f4658] bg-[#232834] px-3 py-2 text-sm text-[#dbe0ec] outline-none focus:border-[#4e70ff]"
+                  className="theme-input w-full rounded-md px-3 py-2 text-sm"
                 />
               </div>
               <div>
-                <label htmlFor="eventEnd" className="mb-1 block text-sm font-semibold tracking-wide text-[#f2f5ff]">
+                <label htmlFor="eventEnd" className="theme-label mb-1 block text-sm font-semibold tracking-wide">
                   Fim do evento
                 </label>
                 <input
@@ -180,32 +188,32 @@ export default function NewEventPage() {
                   type="time"
                   value={formData.eventEnd}
                   onChange={(e) => setFormData((prev) => ({ ...prev, eventEnd: e.target.value }))}
-                  className="w-full rounded-md border border-[#3f4658] bg-[#232834] px-3 py-2 text-sm text-[#dbe0ec] outline-none focus:border-[#4e70ff]"
+                  className="theme-input w-full rounded-md px-3 py-2 text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="location" className="mb-1 block text-sm font-semibold tracking-wide text-[#f2f5ff]">
+              <label htmlFor="location" className="theme-label mb-1 block text-sm font-semibold tracking-wide">
                 Local
               </label>
               <input
                 id="location"
                 value={formData.location}
                 onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-                className="w-full rounded-md border border-[#3f4658] bg-[#232834] px-3 py-2 text-sm text-[#dbe0ec] outline-none focus:border-[#4e70ff]"
+                className="theme-input w-full rounded-md px-3 py-2 text-sm"
               />
             </div>
 
             <div>
-              <label htmlFor="status" className="mb-1 block text-sm font-semibold tracking-wide text-[#f2f5ff]">
+              <label htmlFor="status" className="theme-label mb-1 block text-sm font-semibold tracking-wide">
                 Status
               </label>
               <select
                 id="status"
                 value={formData.status}
                 onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
-                className="w-full rounded-md border border-[#3f4658] bg-[#232834] px-3 py-2 text-sm text-[#dbe0ec] outline-none focus:border-[#4e70ff]"
+                className="theme-input w-full rounded-md px-3 py-2 text-sm"
               >
                 <option value="DRAFT">DRAFT</option>
                 <option value="OPEN">OPEN</option>
@@ -213,19 +221,19 @@ export default function NewEventPage() {
               </select>
             </div>
 
-            <div className="rounded-md border border-[#3f4658] bg-[#232834] p-3">
-              <p className="mb-2 text-sm font-semibold tracking-wide text-[#f2f5ff]">
+            <div className="theme-subpanel rounded-md p-3">
+              <p className="theme-label mb-2 text-sm font-semibold tracking-wide">
                 Quantidade de participantes
               </p>
-              <div className="mb-3 inline-grid grid-cols-2 gap-1 rounded-md border border-[#3f4658] bg-[#1c202a] p-1">
+              <div className="theme-subpanel mb-3 inline-grid grid-cols-2 gap-1 rounded-md p-1">
                 <button
                   type="button"
                   onClick={() => setFormData((prev) => ({ ...prev, hasParticipantLimit: true }))}
                   aria-pressed={formData.hasParticipantLimit}
                   className={`rounded-md px-2.5 py-1.5 text-xs font-medium leading-none transition ${
                     formData.hasParticipantLimit
-                      ? "border border-[#2f61ff] bg-[#1b2f7a] text-[#dbe6ff]"
-                      : "border border-transparent bg-transparent text-[#b9c1d5] hover:bg-[#252b37]"
+                      ? "border border-blue-500 bg-blue-600 text-white"
+                      : "border border-transparent bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
                   }`}
                 >
                   Limitado
@@ -236,8 +244,8 @@ export default function NewEventPage() {
                   aria-pressed={!formData.hasParticipantLimit}
                   className={`rounded-md px-2.5 py-1.5 text-xs font-medium leading-none transition ${
                     !formData.hasParticipantLimit
-                      ? "border border-[#2f61ff] bg-[#1b2f7a] text-[#dbe6ff]"
-                      : "border border-transparent bg-transparent text-[#b9c1d5] hover:bg-[#252b37]"
+                      ? "border border-blue-500 bg-blue-600 text-white"
+                      : "border border-transparent bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
                   }`}
                 >
                   Ilimitado
@@ -251,21 +259,21 @@ export default function NewEventPage() {
                   value={formData.participantLimit}
                   onChange={(e) => setFormData((prev) => ({ ...prev, participantLimit: e.target.value }))}
                   placeholder="Ex: 300"
-                  className="w-full rounded-md border border-[#4a5166] bg-[#1c202a] px-3 py-2 text-sm text-[#dbe0ec] outline-none focus:border-[#4e70ff]"
+                  className="theme-input w-full rounded-md px-3 py-2 text-sm"
                 />
               ) : null}
             </div>
 
-            {error ? <p className="text-sm text-[#f5a5a5]">{error}</p> : null}
+            {error ? <p className="theme-error-message rounded-lg p-3 text-sm">{error}</p> : null}
 
             <div className="flex items-center justify-end gap-2">
-              <Link href="/" className="rounded-md border border-[#4b4f5d] bg-[#232834] px-4 py-2 text-sm text-[#d3d8e4] hover:bg-[#2a3040]">
+              <Link href="/" className="theme-secondary-button rounded-md px-4 py-2 text-sm">
                 Cancelar
               </Link>
               <button
                 type="submit"
-                disabled={loading}
-                className="inline-flex items-center gap-2 rounded-md border border-[#2f9e5f] bg-[#1d6a3f] px-5 py-2 text-sm font-semibold text-[#ddf7e7] hover:bg-[#247a4a] disabled:cursor-not-allowed disabled:opacity-70"
+                disabled={loading || !authReady || !token}
+                className="inline-flex items-center gap-2 rounded-md border border-green-700 bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <span aria-hidden="true" className="text-base leading-none">+</span>
                 <span>{loading ? "Criando..." : "Criar evento"}</span>
@@ -277,3 +285,4 @@ export default function NewEventPage() {
     </main>
   );
 }
+

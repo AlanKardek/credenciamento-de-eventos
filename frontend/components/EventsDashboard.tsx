@@ -19,6 +19,18 @@ type EventItem = {
   updatedAt?: string;
 };
 
+type ManagedUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: "ADMIN" | "STAFF";
+};
+
+type MeResponse = {
+  id: number;
+  role: "ADMIN" | "STAFF";
+};
+
 type EventsDashboardProps = {
   mode: "active" | "archived";
 };
@@ -81,6 +93,11 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [processingEventId, setProcessingEventId] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [openTransferEventId, setOpenTransferEventId] = useState<number | null>(null);
+  const [selectedUserByEventId, setSelectedUserByEventId] = useState<Record<number, string>>({});
+  const [movingEventId, setMovingEventId] = useState<number | null>(null);
 
   const archivedMode = mode === "archived";
   const pageTitle = archivedMode ? "Eventos arquivados" : "Lista de eventos";
@@ -112,25 +129,57 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
       setError("");
 
       try {
-        const response = await fetch(`${API_BASE_URL}/events`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const [meResponse, eventsResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/me`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch(`${API_BASE_URL}/events`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+        ]);
 
-        if (response.status === 401 || response.status === 403) {
+        if (meResponse.status === 401 || eventsResponse.status === 401 || eventsResponse.status === 403) {
           window.localStorage.removeItem(TOKEN_STORAGE_KEY);
           router.replace("/login");
           return;
         }
 
-        if (!response.ok) {
+        if (!meResponse.ok || !eventsResponse.ok) {
           throw new Error("Nao foi possivel carregar os eventos.");
         }
 
-        const data = (await response.json()) as EventItem[];
+        const me = (await meResponse.json()) as MeResponse;
+        const data = (await eventsResponse.json()) as EventItem[];
+        const admin = me.role === "ADMIN";
+        let managedUsers: ManagedUser[] = [];
+
+        if (admin) {
+          const usersResponse = await fetch(`${API_BASE_URL}/admin/users`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (usersResponse.status === 401) {
+            window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+            router.replace("/login");
+            return;
+          }
+
+          if (!usersResponse.ok) {
+            throw new Error("Nao foi possivel carregar usuarios para transferencia.");
+          }
+
+          managedUsers = (await usersResponse.json()) as ManagedUser[];
+        }
 
         if (active) {
+          setIsAdmin(admin);
+          setUsers(managedUsers);
           setEventos(data);
         }
       } catch (err) {
@@ -263,12 +312,66 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
     }
   }
 
+  async function moveEventOwner(evento: EventItem) {
+    const selectedUserId = Number(selectedUserByEventId[evento.id] || "");
+    if (!Number.isInteger(selectedUserId) || selectedUserId <= 0) {
+      setError("Selecione uma conta de destino para mover o evento.");
+      return;
+    }
+
+    setMovingEventId(evento.id);
+    setError("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/events/${evento.id}/owner`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          targetUserId: selectedUserId,
+        }),
+      });
+
+      if (response.status === 401) {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        router.replace("/login");
+        return;
+      }
+
+      if (response.status === 403) {
+        throw new Error("Somente administradores podem mover eventos entre contas.");
+      }
+
+      if (!response.ok) {
+        let message = "Nao foi possivel mover o evento.";
+        try {
+          const body = (await response.json()) as { error?: string };
+          if (body?.error) {
+            message = body.error;
+          }
+        } catch {}
+        throw new Error(message);
+      }
+
+      setOpenTransferEventId(null);
+      setSelectedUserByEventId((current) => ({ ...current, [evento.id]: "" }));
+      setSuccessMessage(`Evento E${evento.id} movido com sucesso.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao mover evento.");
+    } finally {
+      setMovingEventId(null);
+    }
+  }
+
   const visibleEvents = eventos.filter((evento) =>
     archivedMode ? isArchivedStatus(evento.status) : !isArchivedStatus(evento.status)
   );
 
   if (!authReady) {
-    return <main className="min-h-screen bg-[#111318] text-white" />;
+    return <main className="theme-page" />;
   }
 
   return (
@@ -383,9 +486,54 @@ export default function EventsDashboard({ mode }: EventsDashboardProps) {
                         </svg>
                         <span>{isProcessing ? "Salvando..." : actionLabel}</span>
                       </button>
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenTransferEventId((current) => (current === evento.id ? null : evento.id))
+                          }
+                          className="rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900 hover:bg-indigo-100 dark:hover:bg-indigo-800 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 transition-colors"
+                        >
+                          Mover conta
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </div>
+                {isAdmin && openTransferEventId === evento.id ? (
+                  <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+                    <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                      Escolha a conta de destino para este evento
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={selectedUserByEventId[evento.id] ?? ""}
+                        onChange={(event) =>
+                          setSelectedUserByEventId((current) => ({
+                            ...current,
+                            [evento.id]: event.target.value,
+                          }))
+                        }
+                        className="theme-input min-w-[260px] rounded-lg px-4 py-2 text-sm"
+                      >
+                        <option value="">Selecione um usuario</option>
+                        {users.map((user) => (
+                          <option key={user.id} value={String(user.id)}>
+                            {user.name} ({user.email})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => moveEventOwner(evento)}
+                        disabled={movingEventId === evento.id}
+                        className="rounded-lg border border-indigo-700 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {movingEventId === evento.id ? "Movendo..." : "Confirmar movimentacao"}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </article>
             );
           })}

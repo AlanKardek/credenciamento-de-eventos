@@ -25,3 +25,121 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.theme-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.dark .theme-page {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.theme-panel {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.dark .theme-panel {
+  border-color: #334155;
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.theme-subpanel {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.dark .theme-subpanel {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.theme-label {
+  color: #334155;
+}
+
+.dark .theme-label {
+  color: #e2e8f0;
+}
+
+.theme-muted {
+  color: #64748b;
+}
+
+.dark .theme-muted {
+  color: #94a3b8;
+}
+
+.theme-input {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.theme-input::placeholder {
+  color: #94a3b8;
+}
+
+.theme-input:focus {
+  border-color: #3b82f6;
+  outline: none;
+}
+
+.dark .theme-input {
+  border-color: #475569;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.dark .theme-input::placeholder {
+  color: #64748b;
+}
+
+.theme-secondary-button {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
+.theme-secondary-button:hover {
+  background: #f1f5f9;
+}
+
+.dark .theme-secondary-button {
+  border-color: #475569;
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.dark .theme-secondary-button:hover {
+  background: #475569;
+}
+
+.theme-success-message {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.dark .theme-success-message {
+  border-color: #166534;
+  background: #052e16;
+  color: #86efac;
+}
+
+.theme-error-message {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.dark .theme-error-message {
+  border-color: #7f1d1d;
+  background: #450a0a;
+  color: #fca5a5;
+}

@@ -209,51 +209,51 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#111318] text-white">
+      <main className="theme-page">
         <div className="mx-auto max-w-3xl px-4 py-6 md:px-6">
-          <p className="text-sm text-[#b8bfd1]">Carregando perfil...</p>
+          <p className="text-sm theme-muted">Carregando perfil...</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#111318] text-white">
+    <main className="theme-page">
       <div className="mx-auto max-w-3xl px-4 py-6 md:px-6">
         <div className="mb-6 flex items-center justify-between gap-3">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Editar perfil</h1>
-            <p className="mt-2 text-sm text-[#9ba2b3]">
+            <p className="mt-2 text-sm theme-muted">
               Atualize seus dados de acesso e mantenha sua conta segura.
             </p>
           </div>
           <Link
             href="/"
-            className="rounded-md border border-[#3f4658] bg-[#232834] px-4 py-2 text-sm text-[#d3d8e4] hover:bg-[#2a3040]"
+            className="theme-secondary-button rounded-md px-4 py-2 text-sm"
           >
             Voltar
           </Link>
         </div>
 
-        {error ? <p className="mb-4 text-sm text-[#f5a5a5]">{error}</p> : null}
-        {successMessage ? <p className="mb-4 text-sm text-[#b8f0c8]">{successMessage}</p> : null}
+        {error ? <p className="theme-error-message mb-4 rounded-lg p-3 text-sm">{error}</p> : null}
+        {successMessage ? <p className="theme-success-message mb-4 rounded-lg p-3 text-sm">{successMessage}</p> : null}
 
         {profile ? (
-          <section className="rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.22)]">
-            <div className="mb-6 grid gap-3 rounded-xl border border-[#2c313d] bg-[#141821] p-4 md:grid-cols-3">
+          <section className="theme-panel rounded-2xl p-6 shadow-sm">
+            <div className="theme-subpanel mb-6 grid gap-3 rounded-xl p-4 md:grid-cols-3">
               <div>
-                <p className="text-xs uppercase tracking-wide text-[#8f96a8]">Perfil</p>
-                <p className="mt-1 text-sm text-[#dbe6ff]">{profile.role}</p>
+                <p className="theme-muted text-xs uppercase tracking-wide">Perfil</p>
+                <p className="mt-1 text-sm font-medium">{profile.role}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-[#8f96a8]">Criado em</p>
-                <p className="mt-1 text-sm text-[#dbe6ff]">
+                <p className="theme-muted text-xs uppercase tracking-wide">Criado em</p>
+                <p className="mt-1 text-sm font-medium">
                   {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString("pt-BR") : "-"}
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-[#8f96a8]">Ultima atualizacao</p>
-                <p className="mt-1 text-sm text-[#dbe6ff]">
+                <p className="theme-muted text-xs uppercase tracking-wide">Ultima atualizacao</p>
+                <p className="mt-1 text-sm font-medium">
                   {profile.updatedAt ? new Date(profile.updatedAt).toLocaleDateString("pt-BR") : "-"}
                 </p>
               </div>
@@ -261,7 +261,7 @@ export default function ProfilePage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label htmlFor="name" className="mb-2 block text-sm font-medium text-[#d3d8e4]">
+                <label htmlFor="name" className="theme-label mb-2 block text-sm font-medium">
                   Nome
                 </label>
                 <input
@@ -269,13 +269,13 @@ export default function ProfilePage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => updateField("name", e.target.value)}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="Seu nome"
                 />
               </div>
 
               <div>
-                <label htmlFor="email" className="mb-2 block text-sm font-medium text-[#d3d8e4]">
+                <label htmlFor="email" className="theme-label mb-2 block text-sm font-medium">
                   Email
                 </label>
                 <input
@@ -283,20 +283,20 @@ export default function ProfilePage() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => updateField("email", e.target.value)}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="voce@empresa.com"
                 />
               </div>
 
-              <div className="rounded-xl border border-[#2c313d] bg-[#141821] p-4">
-                <h2 className="text-lg font-semibold text-[#dbe6ff]">Alterar senha</h2>
-                <p className="mt-1 text-sm text-[#9ba2b3]">
+              <div className="theme-subpanel rounded-xl p-4">
+                <h2 className="text-lg font-semibold">Alterar senha</h2>
+                <p className="mt-1 text-sm theme-muted">
                   Preencha os campos abaixo somente se quiser trocar sua senha.
                 </p>
 
                 <div className="mt-4 grid gap-4">
                   <div>
-                    <label htmlFor="currentPassword" className="mb-2 block text-sm font-medium text-[#d3d8e4]">
+                    <label htmlFor="currentPassword" className="theme-label mb-2 block text-sm font-medium">
                       Senha atual
                     </label>
                     <input
@@ -304,14 +304,14 @@ export default function ProfilePage() {
                       type="password"
                       value={formData.currentPassword}
                       onChange={(e) => updateField("currentPassword", e.target.value)}
-                      className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                      className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                       placeholder="Digite sua senha atual"
                     />
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label htmlFor="password" className="mb-2 block text-sm font-medium text-[#d3d8e4]">
+                      <label htmlFor="password" className="theme-label mb-2 block text-sm font-medium">
                         Nova senha
                       </label>
                       <input
@@ -319,13 +319,13 @@ export default function ProfilePage() {
                         type="password"
                         value={formData.password}
                         onChange={(e) => updateField("password", e.target.value)}
-                        className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                        className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                         placeholder="Minimo de 6 caracteres"
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="confirmPassword" className="mb-2 block text-sm font-medium text-[#d3d8e4]">
+                      <label htmlFor="confirmPassword" className="theme-label mb-2 block text-sm font-medium">
                         Confirmar nova senha
                       </label>
                       <input
@@ -333,7 +333,7 @@ export default function ProfilePage() {
                         type="password"
                         value={formData.confirmPassword}
                         onChange={(e) => updateField("confirmPassword", e.target.value)}
-                        className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                        className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                         placeholder="Repita a nova senha"
                       />
                     </div>
@@ -344,14 +344,14 @@ export default function ProfilePage() {
               <div className="flex flex-wrap justify-end gap-3 pt-2">
                 <Link
                   href="/"
-                  className="rounded-lg border border-[#3f4658] bg-[#232834] px-6 py-2 text-sm font-semibold text-[#d3d8e4] hover:bg-[#2a3040]"
+                  className="theme-secondary-button rounded-lg px-6 py-2 text-sm font-semibold"
                 >
                   Cancelar
                 </Link>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-lg border border-[#2f9e5f] bg-[#1d6a3f] px-6 py-2 text-sm font-semibold text-[#ddf7e7] hover:bg-[#247a4a] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-lg border border-green-700 bg-green-600 px-6 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving ? "Salvando..." : "Salvar perfil"}
                 </button>
@@ -363,3 +363,4 @@ export default function ProfilePage() {
     </main>
   );
 }
+

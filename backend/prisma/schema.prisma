@@ -18,10 +18,14 @@ model Event {
   eventEnd     String?
   location     String?
   status       String        @default("DRAFT")
+  ownerUserId  Int?
+  owner        User?         @relation("OwnedEvents", fields: [ownerUserId], references: [id])
   participants Participant[]
   checkInLogs  CheckInLog[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @default(now()) @updatedAt
+
+  @@index([ownerUserId])
 }
 
 model Participant {
@@ -53,6 +57,7 @@ model User {
   email          String       @unique
   passwordHash   String
   role           String       @default("STAFF")
+  ownedEvents    Event[]      @relation("OwnedEvents")
   checkInActions CheckInLog[] @relation("CheckInActor")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @default(now()) @updatedAt

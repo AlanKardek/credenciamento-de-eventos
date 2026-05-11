@@ -22,6 +22,18 @@ const maskCPF = (value: string): string => {
   return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
 };
 
+type CategoryOption = {
+  key: string;
+  label: string;
+};
+
+const BASE_CATEGORY_OPTIONS: CategoryOption[] = [
+  { key: "PUBLICO_GERAL", label: "Publico Geral" },
+  { key: "ESTUDANTE", label: "Estudante" },
+  { key: "EXPOSITOR", label: "Expositor" },
+  { key: "STAFF", label: "Staff" },
+];
+
 export default function AddParticipantPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -30,6 +42,7 @@ export default function AddParticipantPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [customCategories, setCustomCategories] = useState<CategoryOption[]>([]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -51,6 +64,32 @@ export default function AddParticipantPage() {
     }
     setToken(savedToken);
   }, [router]);
+
+  useEffect(() => {
+    if (!Number.isInteger(eventId) || eventId <= 0) {
+      return;
+    }
+
+    const stored = window.localStorage.getItem(`event_categories_${eventId}`);
+    if (!stored) {
+      setCustomCategories([]);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored) as CategoryOption[];
+      setCustomCategories(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setCustomCategories([]);
+    }
+  }, [eventId]);
+
+  const categoryOptions = [
+    ...BASE_CATEGORY_OPTIONS,
+    ...customCategories.filter(
+      (category) => !BASE_CATEGORY_OPTIONS.some((base) => base.key === category.key)
+    ),
+  ];
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -127,27 +166,27 @@ export default function AddParticipantPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#111318] text-white">
+    <main className="theme-page">
       <div className="mx-auto max-w-2xl px-4 py-4 md:px-6">
         <div className="mb-4">
           <Link
             href={`/eventos/${eventId}`}
-            className="rounded-md border border-[#3f4658] bg-[#232834] px-3 py-1.5 text-xs text-[#d3d8e4] hover:bg-[#2a3040]"
+            className="theme-secondary-button rounded-md px-3 py-1.5 text-xs"
           >
             ← Voltar para Evento
           </Link>
         </div>
 
-        {error && <p className="mb-4 text-sm text-[#f5a5a5]">{error}</p>}
-        {successMessage && <p className="mb-4 text-sm text-[#ddf7e7]">{successMessage}</p>}
+        {error && <p className="theme-error-message mb-4 rounded-lg p-3 text-sm">{error}</p>}
+        {successMessage && <p className="theme-success-message mb-4 rounded-lg p-3 text-sm">{successMessage}</p>}
 
-        <section className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-6">
+        <section className="theme-panel rounded-lg p-6">
           <h1 className="mb-6 text-2xl font-semibold">Adicionar Participante</h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="name" className="theme-label mb-2 block text-sm font-medium">
                   Nome *
                 </label>
                 <input
@@ -157,13 +196,13 @@ export default function AddParticipantPage() {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="Nome completo"
                 />
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="email" className="theme-label mb-2 block text-sm font-medium">
                   Email *
                 </label>
                 <input
@@ -173,13 +212,13 @@ export default function AddParticipantPage() {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="email@exemplo.com"
                 />
               </div>
 
               <div>
-                <label htmlFor="cpf" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="cpf" className="theme-label mb-2 block text-sm font-medium">
                   CPF *
                 </label>
                 <input
@@ -190,13 +229,13 @@ export default function AddParticipantPage() {
                   onChange={handleChange}
                   required
                   maxLength={14}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="000.000.000-00"
                 />
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="phone" className="theme-label mb-2 block text-sm font-medium">
                   Telefone
                 </label>
                 <input
@@ -206,13 +245,13 @@ export default function AddParticipantPage() {
                   value={formData.phone}
                   onChange={handleChange}
                   maxLength={14}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="(00)00000-0000"
                 />
               </div>
 
               <div>
-                <label htmlFor="institution" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="institution" className="theme-label mb-2 block text-sm font-medium">
                   Instituição
                 </label>
                 <input
@@ -221,13 +260,13 @@ export default function AddParticipantPage() {
                   name="institution"
                   value={formData.institution}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="Empresa/Universidade"
                 />
               </div>
 
               <div>
-                <label htmlFor="jobTitle" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="jobTitle" className="theme-label mb-2 block text-sm font-medium">
                   Cargo
                 </label>
                 <input
@@ -236,13 +275,13 @@ export default function AddParticipantPage() {
                   name="jobTitle"
                   value={formData.jobTitle}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="Cargo/Função"
                 />
               </div>
 
               <div>
-                <label htmlFor="city" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="city" className="theme-label mb-2 block text-sm font-medium">
                   Cidade
                 </label>
                 <input
@@ -251,13 +290,13 @@ export default function AddParticipantPage() {
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                   placeholder="Cidade"
                 />
               </div>
 
               <div>
-                <label htmlFor="uf" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="uf" className="theme-label mb-2 block text-sm font-medium">
                   Estado (UF)
                 </label>
                 <select
@@ -265,7 +304,7 @@ export default function AddParticipantPage() {
                   name="uf"
                   value={formData.uf}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                 >
                   <option value="">Selecione um estado...</option>
                   {UF_OPTIONS.map((uf) => (
@@ -277,7 +316,7 @@ export default function AddParticipantPage() {
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="category" className="block text-sm font-medium text-[#d3d8e4] mb-2">
+                <label htmlFor="category" className="theme-label mb-2 block text-sm font-medium">
                   Categoria
                 </label>
                 <select
@@ -285,12 +324,13 @@ export default function AddParticipantPage() {
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-[#34394a] bg-[#0f1117] px-4 py-2 text-sm text-[#d3d8e4] focus:border-[#2f61ff] focus:outline-none"
+                  className="theme-input w-full rounded-lg px-4 py-2 text-sm"
                 >
-                  <option value="PUBLICO_GERAL">Público Geral</option>
-                  <option value="ESTUDANTE">Estudante</option>
-                  <option value="EXPOSITOR">Expositor</option>
-                  <option value="STAFF">Staff</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category.key} value={category.key}>
+                      {category.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -299,14 +339,14 @@ export default function AddParticipantPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 rounded-lg border border-[#2f9e5f] bg-[#1d6a3f] px-6 py-2 text-sm font-semibold text-[#ddf7e7] hover:bg-[#247a4a] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 rounded-lg border border-green-700 bg-green-600 px-6 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Adicionando..." : "Adicionar Participante"}
               </button>
               <button
                 type="button"
                 onClick={() => router.push(`/eventos/${eventId}`)}
-                className="flex-1 rounded-lg border border-[#3f4658] bg-[#232834] px-6 py-2 text-sm font-semibold text-[#d3d8e4] hover:bg-[#2a3040]"
+                className="theme-secondary-button flex-1 rounded-lg px-6 py-2 text-sm font-semibold"
               >
                 Cancelar
               </button>
@@ -317,3 +357,4 @@ export default function AddParticipantPage() {
     </main>
   );
 }
+

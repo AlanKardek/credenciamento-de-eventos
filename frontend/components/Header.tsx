@@ -9,19 +9,23 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
   const [open, setOpen] = useState(false);
-  const [token, setToken] = useState("");
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [token, setToken] = useState(() =>
+    typeof window === "undefined" ? "" : window.localStorage.getItem(TOKEN_STORAGE_KEY) || ""
+  );
+  const [isDarkMode, setIsDarkMode] = useState(() =>
+    typeof window === "undefined" ? false : window.localStorage.getItem("darkMode") === "true"
+  );
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const effectiveToken =
+    token || (typeof window === "undefined" ? "" : window.localStorage.getItem(TOKEN_STORAGE_KEY) || "");
 
   // Verificar se está na página de login
   const isLoginPage = pathname === "/login";
 
   useEffect(() => {
-    const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) || "";
-    setToken(savedToken);
-
-    if (!savedToken) {
+    if (!effectiveToken) {
       return;
     }
 
@@ -30,12 +34,15 @@ export default function Header() {
     async function loadMe() {
       try {
         const res = await fetch(`${API_BASE_URL}/me`, {
-          headers: { Authorization: `Bearer ${savedToken}` },
+          headers: { Authorization: `Bearer ${effectiveToken}` },
         });
         if (!res.ok) return;
         const data = await res.json();
-        if (active) setUserName(data.name || "");
-      } catch (e) {
+        if (active) {
+          setUserName(data.name || "");
+          setUserRole(data.role || "");
+        }
+      } catch {
         // ignorar
       }
     }
@@ -53,18 +60,16 @@ export default function Header() {
       active = false;
       window.removeEventListener("click", handleDocClick);
     };
-  }, []);
+  }, [effectiveToken]);
 
   // Carregar modo noturno do localStorage
   useEffect(() => {
-    const saved = window.localStorage.getItem("darkMode") === "true";
-    setIsDarkMode(saved);
-    if (saved) {
+    if (isDarkMode) {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
-  }, []);
+  }, [isDarkMode]);
 
   const toggleDarkMode = () => {
     const newMode = !isDarkMode;
@@ -79,6 +84,7 @@ export default function Header() {
 
   const logout = () => {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+    setToken("");
     router.push("/login");
   };
 
@@ -88,11 +94,12 @@ export default function Header() {
   }
 
   // Não mostrar header se não estiver autenticado
-  if (!token) {
+  if (!effectiveToken) {
     return null;
   }
 
   const isActive = (href: string) => pathname === href;
+  const isAdmin = userRole === "ADMIN";
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
@@ -136,7 +143,33 @@ export default function Header() {
         </nav>
 
         {/* Menu do usuário à direita */}
-        <div ref={containerRef} className="relative ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {isAdmin ? (
+            <>
+              <Link
+                href="/usuarios"
+                className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="hidden sm:inline">Usuarios</span>
+              </Link>
+              <Link
+                href="/contas/nova"
+                className="inline-flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 5v14m7-7H5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="hidden sm:inline">Criar conta</span>
+              </Link>
+            </>
+          ) : null}
+
+        <div ref={containerRef} className="relative">
           <button
             onClick={() => setOpen(v => !v)}
             aria-haspopup="true"
@@ -180,6 +213,17 @@ export default function Header() {
               >
                 Editar Perfil
               </button>
+              {isAdmin ? (
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    router.push('/usuarios');
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
+                >
+                  Usuarios
+                </button>
+              ) : null}
               <div className="border-t border-slate-200 dark:border-slate-700"></div>
               <button
                 onClick={toggleDarkMode}
@@ -211,6 +255,7 @@ export default function Header() {
               </button>
             </div>
           )}
+        </div>
         </div>
       </div>
     </header>

@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const forgotPasswordUrl =
+    "https://wa.me/5598999666666?text=Ola%2C%20preciso%20recuperar%20minha%20senha%20do%20Ticket%20Hub.";
 
   useEffect(() => {
     const token = window.localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -70,6 +72,17 @@ export default function LoginPage() {
     <main className="min-h-screen bg-[#111318] text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-md items-center px-4">
         <section className="w-full rounded-2xl border border-[#2c313d] bg-[#1a1d24] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.22)]">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3" y="6" width="18" height="12" rx="1" stroke="white" strokeWidth="1.5" />
+                <path d="M9 6v12" stroke="white" strokeWidth="1.5" strokeDasharray="2" />
+                <circle cx="6" cy="12" r="1.5" fill="white" />
+                <circle cx="18" cy="12" r="1.5" fill="white" />
+              </svg>
+            </div>
+            <span className="text-xl font-bold text-white">Ticket Hub</span>
+          </div>
           <h1 className="mb-2 text-2xl font-semibold">Entrar</h1>
           <p className="mb-6 text-sm text-[#9ba2b3]">Acesse o painel de credenciamento.</p>
           <p className="mb-6 text-xs text-[#7f879b]">API: {API_BASE_URL}</p>
@@ -101,6 +114,17 @@ export default function LoginPage() {
                 required
                 className="w-full rounded-md border border-[#3f4658] bg-[#232834] px-3 py-2 text-sm text-[#dbe0ec] outline-none focus:border-[#4e70ff]"
               />
+            </div>
+
+            <div className="flex justify-end">
+              <a
+                href={forgotPasswordUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-[#9db4ff] hover:text-[#c4d0ff]"
+              >
+                Esqueci minha senha
+              </a>
             </div>
 
             {error ? <p className="text-sm text-[#f5a5a5]">{error}</p> : null}

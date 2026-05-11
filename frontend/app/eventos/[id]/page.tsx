@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { API_BASE_URL, TOKEN_STORAGE_KEY } from "@/app/constants/auth";
 
 type EventDetail = {
@@ -40,6 +40,148 @@ type CustomCategory = {
   label: string;
 };
 
+type ImportParticipant = {
+  name: string;
+  email: string;
+  cpf: string;
+  phone?: string;
+  institution?: string;
+  jobTitle?: string;
+  city?: string;
+  uf?: string;
+  category?: string;
+};
+
+const IMPORT_HEADER_ALIASES: Record<string, keyof ImportParticipant> = {
+  name: "name",
+  nome: "name",
+  email: "email",
+  "e-mail": "email",
+  cpf: "cpf",
+  documento: "cpf",
+  phone: "phone",
+  telefone: "phone",
+  celular: "phone",
+  institution: "institution",
+  instituicao: "institution",
+  instituicao_de_ensino: "institution",
+  jobtitle: "jobTitle",
+  cargo: "jobTitle",
+  city: "city",
+  cidade: "city",
+  uf: "uf",
+  estado: "uf",
+  category: "category",
+  categoria: "category",
+};
+
+function normalizeImportHeader(value: string) {
+  return value
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+function parseDelimitedText(text: string) {
+  const normalizedText = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const firstLine = normalizedText.split("\n").find((line) => line.trim()) || "";
+  const delimiter = firstLine.includes(";") && !firstLine.includes(",") ? ";" : firstLine.includes("\t") ? "\t" : ",";
+  const rows: string[][] = [];
+  let currentCell = "";
+  let currentRow: string[] = [];
+  let insideQuotes = false;
+
+  for (let index = 0; index < normalizedText.length; index += 1) {
+    const char = normalizedText[index];
+    const nextChar = normalizedText[index + 1];
+
+    if (char === "\"") {
+      if (insideQuotes && nextChar === "\"") {
+        currentCell += "\"";
+        index += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+      continue;
+    }
+
+    if (!insideQuotes && char === delimiter) {
+      currentRow.push(currentCell.trim());
+      currentCell = "";
+      continue;
+    }
+
+    if (!insideQuotes && char === "\n") {
+      currentRow.push(currentCell.trim());
+      if (currentRow.some((cell) => cell)) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentCell = "";
+      continue;
+    }
+
+    currentCell += char;
+  }
+
+  currentRow.push(currentCell.trim());
+  if (currentRow.some((cell) => cell)) {
+    rows.push(currentRow);
+  }
+
+  if (insideQuotes) {
+    throw new Error("Arquivo com aspas sem fechamento. Revise a planilha e tente novamente.");
+  }
+
+  return rows;
+}
+
+function parseParticipantsImport(text: string) {
+  const rows = parseDelimitedText(text);
+
+  if (rows.length < 2) {
+    throw new Error("A planilha precisa ter cabecalho e ao menos um participante.");
+  }
+
+  const headerMap = rows[0].map((header) => IMPORT_HEADER_ALIASES[normalizeImportHeader(header)] || null);
+  const requiredHeaders: Array<keyof ImportParticipant> = ["name", "email", "cpf"];
+  const missingHeaders = requiredHeaders.filter((header) => !headerMap.includes(header));
+
+  if (missingHeaders.length > 0) {
+    throw new Error("A planilha precisa ter as colunas name/nome, email e cpf.");
+  }
+
+  return rows.slice(1).map((row, rowIndex) => {
+    const participant: Record<keyof ImportParticipant, string> = {
+      name: "",
+      email: "",
+      cpf: "",
+      phone: "",
+      institution: "",
+      jobTitle: "",
+      city: "",
+      uf: "",
+      category: "",
+    };
+
+    row.forEach((cell, cellIndex) => {
+      const key = headerMap[cellIndex];
+      if (key) {
+        participant[key] = cell;
+      }
+    });
+
+    if (!participant.name || !participant.email || !participant.cpf) {
+      throw new Error(`Linha ${rowIndex + 2}: nome, email e cpf sao obrigatorios.`);
+    }
+
+    return participant;
+  });
+}
+
 function normalizeCategoryKey(value: string) {
   return value
     .normalize("NFD")
@@ -53,6 +195,7 @@ export default function EventDetailsPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const eventId = Number(params.id);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [token, setToken] = useState("");
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -70,6 +213,9 @@ export default function EventDetailsPage() {
   const [editingCategoryKey, setEditingCategoryKey] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [savingCategory, setSavingCategory] = useState(false);
+  const [deletingCategoryKey, setDeletingCategoryKey] = useState<string | null>(null);
+  const [importingParticipants, setImportingParticipants] = useState(false);
+  const [importFileName, setImportFileName] = useState("");
 
   useEffect(() => {
     const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) || "";
@@ -305,6 +451,64 @@ export default function EventDetailsPage() {
     window.URL.revokeObjectURL(url);
   };
 
+  const openImportFilePicker = () => {
+    setError("");
+    setSuccessMessage("");
+    importInputRef.current?.click();
+  };
+
+  const handleImportFileChange = async (fileList: FileList | null) => {
+    const file = fileList?.[0];
+    if (!file) {
+      return;
+    }
+
+    setImportingParticipants(true);
+    setImportFileName(file.name);
+    setError("");
+    setSuccessMessage("");
+
+    try {
+      const extension = file.name.split(".").pop()?.toLowerCase();
+      if (extension && !["csv", "tsv", "txt"].includes(extension)) {
+        throw new Error("Use uma planilha salva em CSV ou TSV para importar participantes.");
+      }
+
+      const participantsToImport = parseParticipantsImport(await file.text());
+
+      const response = await fetch(`${API_BASE_URL}/admin/events/${eventId}/participants/import`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ participants: participantsToImport }),
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        router.replace("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || "Erro ao importar participantes.");
+      }
+
+      const result = (await response.json()) as { imported: number; participants: Participant[] };
+      setParticipants((current) => [...current, ...result.participants]);
+      setSuccessMessage(`${result.imported} participante${result.imported === 1 ? "" : "s"} importado${result.imported === 1 ? "" : "s"} com sucesso.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao importar participantes.");
+    } finally {
+      setImportingParticipants(false);
+      if (importInputRef.current) {
+        importInputRef.current.value = "";
+      }
+    }
+  };
+
   const startEditingCategory = (categoryKey: string, label: string) => {
     setEditingCategoryKey(categoryKey);
     setEditingCategoryName(label);
@@ -385,46 +589,34 @@ export default function EventDetailsPage() {
       );
 
       if (affectedParticipants.length > 0) {
-        const responses = await Promise.all(
-          affectedParticipants.map((participant) =>
-            fetch(`${API_BASE_URL}/admin/participants/${participant.id}`, {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                name: participant.name,
-                email: participant.email,
-                cpf: participant.cpf || "",
-                phone: participant.phone || null,
-                institution: participant.institution || null,
-                jobTitle: participant.jobTitle || null,
-                city: participant.city || null,
-                uf: participant.uf || null,
-                category: trimmed,
-              }),
-            })
-          )
+        const response = await fetch(
+          `${API_BASE_URL}/admin/events/${eventId}/categories/${encodeURIComponent(editingCategoryKey)}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              category: trimmed,
+            }),
+          }
         );
 
-        const unauthorized = responses.some((response) => response.status === 401);
-        if (unauthorized) {
+        if (response.status === 401) {
           window.localStorage.removeItem(TOKEN_STORAGE_KEY);
           router.replace("/login");
           return;
         }
 
-        const forbidden = responses.some((response) => response.status === 403);
-        if (forbidden) {
-          throw new Error("Somente administradores podem editar categorias.");
+        if (response.status === 403) {
+          throw new Error("Sua conta nao tem permissao para editar categorias.");
         }
 
-        const failedResponse = responses.find((response) => !response.ok);
-        if (failedResponse) {
+        if (!response.ok) {
           let message = "Nao foi possivel atualizar a categoria.";
           try {
-            const body = (await failedResponse.json()) as { error?: string };
+            const body = (await response.json()) as { error?: string };
             if (body?.error) {
               message = body.error;
             }
@@ -453,6 +645,75 @@ export default function EventDetailsPage() {
       setError(err instanceof Error ? err.message : "Erro ao editar categoria.");
     } finally {
       setSavingCategory(false);
+    }
+  };
+
+  const deleteCategory = async (categoryKey: string, label: string, hasParticipants: boolean) => {
+    const confirmed = window.confirm(
+      hasParticipants
+        ? `Excluir a categoria "${label}"? Os participantes dela serao movidos para Publico Geral.`
+        : `Excluir a categoria "${label}"?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingCategoryKey(categoryKey);
+    setError("");
+    setSuccessMessage("");
+
+    try {
+      if (hasParticipants) {
+        const response = await fetch(
+          `${API_BASE_URL}/admin/events/${eventId}/categories/${encodeURIComponent(categoryKey)}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.status === 401) {
+          window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+          router.replace("/login");
+          return;
+        }
+
+        if (response.status === 403) {
+          throw new Error("Sua conta nao tem permissao para excluir categorias.");
+        }
+
+        if (!response.ok) {
+          let message = "Nao foi possivel excluir a categoria.";
+          try {
+            const body = (await response.json()) as { error?: string };
+            if (body?.error) {
+              message = body.error;
+            }
+          } catch {}
+          throw new Error(message);
+        }
+
+        setParticipants((current) =>
+          current.map((participant) =>
+            normalizeCategoryKey(participant.category || "") === categoryKey
+              ? { ...participant, category: "PUBLICO_GERAL" }
+              : participant
+          )
+        );
+      }
+
+      persistCustomCategories(customCategories.filter((category) => category.key !== categoryKey));
+      if (editingCategoryKey === categoryKey) {
+        cancelEditingCategory();
+      }
+      setSuccessMessage("Categoria excluida com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao excluir categoria.");
+    } finally {
+      setDeletingCategoryKey(null);
     }
   };
 
@@ -623,8 +884,8 @@ export default function EventDetailsPage() {
                 className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: slice.color }}
               />
-              <span className="text-[#b8bfd1]">{slice.name}</span>
-              <span className="text-[#8f96a8]">{Math.round((slice.value / total) * 100)}%</span>
+              <span className="theme-muted">{slice.name}</span>
+              <span className="theme-muted">{Math.round((slice.value / total) * 100)}%</span>
             </div>
           ))}
         </div>
@@ -721,7 +982,7 @@ export default function EventDetailsPage() {
               autoFocus
             />
             {searchQuery && (
-              <p className="mt-2 text-xs text-[#8f96a8]">
+              <p className="mt-2 text-xs theme-muted">
                 {filteredParticipants.length} participante(s) encontrado(s)
               </p>
             )}
@@ -736,52 +997,52 @@ export default function EventDetailsPage() {
           <>
             {activeTab === "participants" ? (
               <>
-            <section className="mb-4 rounded-lg border border-slate-200 bg-white p-4">
-              <h1 className="text-2xl font-bold mb-3 text-slate-900">{event.title}</h1>
+            <section className="mb-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+              <h1 className="mb-3 text-2xl font-bold text-slate-900 dark:text-white">{event.title}</h1>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <div>
-                  <p className="text-slate-500 uppercase tracking-wide text-xs mb-1 font-semibold">Descrição</p>
-                  <p className="text-slate-700">{event.description || "-"}</p>
+                  <p className="theme-muted mb-1 text-xs font-semibold uppercase tracking-wide">Descrição</p>
+                  <p className="text-slate-700 dark:text-slate-200">{event.description || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500 uppercase tracking-wide text-xs mb-1 font-semibold">Organização</p>
-                  <p className="text-slate-700">{event.organizer || "-"}</p>
+                  <p className="theme-muted mb-1 text-xs font-semibold uppercase tracking-wide">Organização</p>
+                  <p className="text-slate-700 dark:text-slate-200">{event.organizer || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-1">Data</p>
-                  <p className="text-[#d3d8e4]">{formatDateBr(event.date)}</p>
+                  <p className="theme-muted mb-1 text-xs font-semibold uppercase tracking-wide">Data</p>
+                  <p className="text-slate-700 dark:text-slate-200">{formatDateBr(event.date)}</p>
                 </div>
                 <div>
-                  <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-1">Horário</p>
-                  <p className="text-[#d3d8e4]">{event.eventStart || "-"} até {event.eventEnd || "-"}</p>
+                  <p className="theme-muted mb-1 text-xs font-semibold uppercase tracking-wide">Horário</p>
+                  <p className="text-slate-700 dark:text-slate-200">{event.eventStart || "-"} até {event.eventEnd || "-"}</p>
                 </div>
               </div>
             </section>
 
             <section className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
-                <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-2">Total de Participantes</p>
-                <p className="text-4xl font-bold text-[#dbe6ff]">{totalParticipants}</p>
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+                <p className="theme-muted uppercase tracking-wide text-xs mb-2">Total de Participantes</p>
+                <p className="text-4xl font-bold text-slate-900 dark:text-white">{totalParticipants}</p>
               </div>
-              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
-                <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-2">Check-ins Realizados</p>
-                <p className="text-4xl font-bold text-[#ddf7e7]">{checkInCount}</p>
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+                <p className="theme-muted uppercase tracking-wide text-xs mb-2">Check-ins Realizados</p>
+                <p className="text-4xl font-bold text-green-700 dark:text-green-300">{checkInCount}</p>
               </div>
-              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
-                <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-2">Taxa de Presença</p>
-                <p className="text-4xl font-bold text-[#dbe6ff]">{percentualCheckIn}%</p>
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+                <p className="theme-muted uppercase tracking-wide text-xs mb-2">Taxa de Presença</p>
+                <p className="text-4xl font-bold text-slate-900 dark:text-white">{percentualCheckIn}%</p>
               </div>
             </section>
 
-            <section className="mb-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+            <section className="hidden">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
                 <h3 className="mb-3 text-sm font-semibold uppercase">Timeline de Inscrições</h3>
                 <div className="w-full overflow-x-auto">
                   <LineChart data={timelineData} />
                 </div>
               </div>
 
-              <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
                 <h3 className="mb-3 text-sm font-semibold uppercase">Distribuição por Categoria</h3>
                 <div className="w-full overflow-x-auto">
                   <PieChart data={categoryData} />
@@ -789,46 +1050,46 @@ export default function EventDetailsPage() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+            <section className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
               <h2 className="mb-4 text-lg font-semibold uppercase">Participantes ({filteredParticipants.length}/{totalParticipants})</h2>
               {filteredParticipants.length === 0 ? (
-                <p className="text-sm text-[#b8bfd1]">
+                <p className="text-sm theme-muted">
                   {searchQuery ? "Nenhum participante encontrado com esses critérios." : "Nenhum participante cadastrado."}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b-2 border-[#2f61ff] bg-[#0f1117]">
-                        <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide">Nome</th>
-                        <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide">Categoria</th>
-                        <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide hidden sm:table-cell">Inscrito em</th>
-                        <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide">Status</th>
-                        <th className="px-4 py-3 text-center text-[#2f61ff] font-bold uppercase tracking-wide">Check-in</th>
-                        <th className="px-4 py-3 text-center text-[#2f61ff] font-bold uppercase tracking-wide">Ações</th>
+                      <tr className="border-b-2 border-blue-500 bg-slate-50 dark:bg-slate-900">
+                        <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Nome</th>
+                        <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Categoria</th>
+                        <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide hidden sm:table-cell">Inscrito em</th>
+                        <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Status</th>
+                        <th className="px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Check-in</th>
+                        <th className="px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredParticipants.map((participant, index) => (
                         <tr
                           key={participant.id}
-                          className={`border-b border-[#34394a] ${
-                            index % 2 === 0 ? "bg-[#0f1117]" : "bg-[#1a1d24]"
-                          } hover:bg-[#212634] transition-colors`}
+                          className={`border-b border-slate-200 dark:border-slate-700 ${
+                            index % 2 === 0 ? "bg-slate-50 dark:bg-slate-900" : "bg-white dark:bg-slate-800"
+                          } hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors`}
                         >
-                          <td className="px-4 py-3 text-[#d3d8e4] font-semibold text-sm">{participant.name}</td>
-                          <td className="px-4 py-3 text-[#9ba2b3] text-sm">
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200 font-semibold text-sm">{participant.name}</td>
+                          <td className="px-4 py-3 theme-muted text-sm">
                             {participant.category ? participant.category.replace(/_/g, ' ') : "-"}
                           </td>
-                          <td className="px-4 py-3 text-[#9ba2b3] text-sm hidden sm:table-cell">
+                          <td className="px-4 py-3 theme-muted text-sm hidden sm:table-cell">
                             {participant.createdAt ? new Date(participant.createdAt).toLocaleDateString('pt-BR') : "-"}
                           </td>
-                          <td className="px-4 py-3 text-[#9ba2b3] text-sm">{participant.institution || "-"}</td>
+                          <td className="px-4 py-3 theme-muted text-sm">{participant.institution || "-"}</td>
                           <td className="px-4 py-3 text-center">
                             <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold ${
                               participant.checkIn
-                                ? "bg-[#1d6a3f] text-[#ddf7e7]"
-                                : "bg-[#6a3f1d] text-[#ffc9a3]"
+                                ? "bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300"
+                                : "bg-amber-50 dark:bg-amber-900 text-amber-700 dark:text-amber-300"
                             }`}>
                               {participant.checkIn ? "✓ Sim" : "✗ Não"}
                             </span>
@@ -836,7 +1097,7 @@ export default function EventDetailsPage() {
                           <td className="px-4 py-3 text-center">
                             <button
                               onClick={() => router.push(`/eventos/${eventId}/participantes/${participant.id}/editar`)}
-                              className="inline-flex items-center gap-1 rounded px-3 py-1.5 text-xs bg-[#1b2f7a] text-[#dbe6ff] hover:bg-[#203a95] font-semibold"
+                              className="inline-flex items-center gap-1 rounded px-3 py-1.5 text-xs bg-blue-600 dark:bg-blue-900 text-white hover:bg-blue-700 dark:hover:bg-blue-800 font-semibold"
                               title="Editar participante"
                             >
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -858,11 +1119,11 @@ export default function EventDetailsPage() {
             {activeTab === "category" ? (
               <>
                 <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-                  <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <h2 className="text-lg font-semibold uppercase">Categorias</h2>
-                        <p className="mt-1 text-sm text-[#9ba2b3]">
+                        <p className="mt-1 text-sm theme-muted">
                           Gerencie os nomes das categorias do evento.
                         </p>
                       </div>
@@ -872,15 +1133,15 @@ export default function EventDetailsPage() {
                           setShowCreateCategory((current) => !current);
                           setNewCategoryName("");
                         }}
-                        className="rounded-md border border-[#2f9e5f] bg-[#1d6a3f] px-4 py-2 text-sm font-semibold text-[#ddf7e7] hover:bg-[#247a4a]"
+                        className="rounded-md border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900 px-4 py-2 text-sm font-semibold text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-800"
                       >
                         Criar categoria
                       </button>
                     </div>
 
                     {showCreateCategory ? (
-                      <div className="mb-4 rounded-lg border border-[#34394a] bg-[#0f1117] p-4">
-                        <label className="mb-2 block text-sm font-medium text-[#d3d8e4]" htmlFor="new-category">
+                      <div className="mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                        <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="new-category">
                           Nova categoria
                         </label>
                         <input
@@ -889,7 +1150,7 @@ export default function EventDetailsPage() {
                           value={newCategoryName}
                           onChange={(e) => setNewCategoryName(e.target.value)}
                           placeholder="Ex: Imprensa"
-                          className="w-full rounded-lg border border-[#34394a] bg-[#161b24] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                          className="w-full rounded-lg border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 placeholder-[#566575] focus:border-blue-500 focus:outline-none"
                         />
                         <div className="mt-3 flex flex-wrap justify-end gap-2">
                           <button
@@ -898,14 +1159,14 @@ export default function EventDetailsPage() {
                               setShowCreateCategory(false);
                               setNewCategoryName("");
                             }}
-                            className="rounded-md border border-[#3f4658] bg-[#232834] px-4 py-2 text-sm text-[#d3d8e4] hover:bg-[#2a3040]"
+                            className="rounded-md border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-700 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600"
                           >
                             Cancelar
                           </button>
                           <button
                             type="button"
                             onClick={createCategory}
-                            className="rounded-md border border-[#2f9e5f] bg-[#1d6a3f] px-4 py-2 text-sm font-semibold text-[#ddf7e7] hover:bg-[#247a4a]"
+                            className="rounded-md border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900 px-4 py-2 text-sm font-semibold text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-800"
                           >
                             Salvar categoria
                           </button>
@@ -914,27 +1175,27 @@ export default function EventDetailsPage() {
                     ) : null}
 
                     {managedCategories.length === 0 ? (
-                      <p className="text-sm text-[#b8bfd1]">Ainda nao existem categorias cadastradas para este evento.</p>
+                      <p className="text-sm theme-muted">Ainda nao existem categorias cadastradas para este evento.</p>
                     ) : (
                       <div className="space-y-3">
                         {managedCategories.map((category) => (
                           <div
                             key={category.key}
-                            className="rounded-lg border border-[#34394a] bg-[#0f1117] p-4"
+                            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4"
                           >
                             {editingCategoryKey === category.key ? (
                               <>
-                                <label className="mb-2 block text-sm font-medium text-[#d3d8e4]">
+                                <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">
                                   Editar categoria
                                 </label>
                                 <input
                                   type="text"
                                   value={editingCategoryName}
                                   onChange={(e) => setEditingCategoryName(e.target.value)}
-                                  className="w-full rounded-lg border border-[#34394a] bg-[#161b24] px-4 py-2 text-sm text-[#d3d8e4] placeholder-[#566575] focus:border-[#2f61ff] focus:outline-none"
+                                  className="w-full rounded-lg border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 placeholder-[#566575] focus:border-blue-500 focus:outline-none"
                                 />
                                 <div className="mt-3 flex flex-wrap justify-between gap-3">
-                                  <p className="text-xs text-[#8f96a8]">
+                                  <p className="text-xs theme-muted">
                                     {category.hasParticipants
                                       ? `${category.count} participante(s) serao atualizados.`
                                       : "Categoria vazia, pronta para uso futuro."}
@@ -943,7 +1204,7 @@ export default function EventDetailsPage() {
                                     <button
                                       type="button"
                                       onClick={cancelEditingCategory}
-                                      className="rounded-md border border-[#3f4658] bg-[#232834] px-3 py-1.5 text-xs text-[#d3d8e4] hover:bg-[#2a3040]"
+                                      className="rounded-md border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-700 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600"
                                     >
                                       Cancelar
                                     </button>
@@ -951,7 +1212,7 @@ export default function EventDetailsPage() {
                                       type="button"
                                       onClick={saveCategoryEdition}
                                       disabled={savingCategory}
-                                      className="rounded-md border border-[#2f61ff] bg-[#1b2f7a] px-3 py-1.5 text-xs font-semibold text-[#dbe6ff] hover:bg-[#203a95] disabled:opacity-60"
+                                      className="rounded-md border border-blue-500 bg-blue-600 dark:bg-blue-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 dark:hover:bg-blue-800 disabled:opacity-60"
                                     >
                                       {savingCategory ? "Salvando..." : "Salvar"}
                                     </button>
@@ -961,19 +1222,29 @@ export default function EventDetailsPage() {
                             ) : (
                               <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
-                                  <p className="text-sm font-semibold text-[#dbe6ff]">{category.label}</p>
-                                  <p className="mt-1 text-xs text-[#8f96a8]">
+                                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{category.label}</p>
+                                  <p className="mt-1 text-xs theme-muted">
                                     {category.count} participante(s)
                                     {!category.hasParticipants ? " | categoria sem uso ainda" : ""}
                                   </p>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => startEditingCategory(category.key, category.label)}
-                                  className="rounded-md border border-[#3f4658] bg-[#232834] px-3 py-1.5 text-xs font-semibold text-[#d3d8e4] hover:bg-[#2a3040]"
-                                >
-                                  Editar
-                                </button>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditingCategory(category.key, category.label)}
+                                    className="rounded-md border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600"
+                                  >
+                                    Editar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteCategory(category.key, category.label, category.hasParticipants)}
+                                    disabled={deletingCategoryKey === category.key}
+                                    className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-800 dark:bg-red-950 dark:text-red-300 dark:hover:bg-red-900"
+                                  >
+                                    {deletingCategoryKey === category.key ? "Excluindo..." : "Excluir"}
+                                  </button>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -983,10 +1254,10 @@ export default function EventDetailsPage() {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
                       <h3 className="mb-4 text-sm font-semibold uppercase">Participantes por categoria</h3>
                       {categorySummary.length === 0 ? (
-                        <p className="text-sm text-[#b8bfd1]">Sem dados de categoria para exibir.</p>
+                        <p className="text-sm theme-muted">Sem dados de categoria para exibir.</p>
                       ) : (
                         <div className="space-y-3">
                           {categorySummary.map((category) => {
@@ -994,12 +1265,12 @@ export default function EventDetailsPage() {
                             return (
                               <div key={`${category.name}-bar`}>
                                 <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-                                  <span className="text-[#d3d8e4]">{formatCategoryLabel(category.name)}</span>
-                                  <span className="text-[#8f96a8]">{category.value} participante(s)</span>
+                                  <span className="text-slate-700 dark:text-slate-200">{formatCategoryLabel(category.name)}</span>
+                                  <span className="theme-muted">{category.value} participante(s)</span>
                                 </div>
-                                <div className="h-2 rounded-full bg-[#0f1117]">
+                                <div className="h-2 rounded-full bg-slate-50 dark:bg-slate-900">
                                   <div
-                                    className="h-2 rounded-full bg-[#2f61ff]"
+                                    className="h-2 rounded-full bg-blue-600"
                                     style={{ width: `${percent}%` }}
                                   />
                                 </div>
@@ -1010,10 +1281,10 @@ export default function EventDetailsPage() {
                       )}
                     </div>
 
-                    <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
                       <h3 className="mb-4 text-sm font-semibold uppercase">Distribuicao visual</h3>
                       {categorySummary.length === 0 ? (
-                        <p className="text-sm text-[#b8bfd1]">Sem categorias registradas.</p>
+                        <p className="text-sm theme-muted">Sem categorias registradas.</p>
                       ) : (
                         <div className="w-full overflow-x-auto">
                           <PieChart data={categoryData} />
@@ -1028,50 +1299,50 @@ export default function EventDetailsPage() {
             {activeTab === "document" ? (
               <>
                 <section className="mb-4 grid gap-3 md:grid-cols-3">
-                  <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
-                    <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-2">Documentos preenchidos</p>
-                    <p className="text-4xl font-bold text-[#ddf7e7]">{participantsWithDocument}</p>
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+                    <p className="theme-muted uppercase tracking-wide text-xs mb-2">Documentos preenchidos</p>
+                    <p className="text-4xl font-bold text-green-700 dark:text-green-300">{participantsWithDocument}</p>
                   </div>
-                  <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
-                    <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-2">Pendentes</p>
-                    <p className="text-4xl font-bold text-[#ffc9a3]">{participantsWithoutDocument}</p>
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+                    <p className="theme-muted uppercase tracking-wide text-xs mb-2">Pendentes</p>
+                    <p className="text-4xl font-bold text-amber-700 dark:text-amber-300">{participantsWithoutDocument}</p>
                   </div>
-                  <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
-                    <p className="text-[#8f96a8] uppercase tracking-wide text-xs mb-2">Conclusao</p>
-                    <p className="text-4xl font-bold text-[#dbe6ff]">{documentCompletion}%</p>
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+                    <p className="theme-muted uppercase tracking-wide text-xs mb-2">Conclusao</p>
+                    <p className="text-4xl font-bold text-slate-900 dark:text-white">{documentCompletion}%</p>
                   </div>
                 </section>
 
-                <section className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-4">
+                <section className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
                   <h2 className="mb-4 text-lg font-semibold uppercase">Controle de documentos</h2>
-                  <p className="mb-4 text-sm text-[#9ba2b3]">
+                  <p className="mb-4 text-sm theme-muted">
                     Pendencias no filtro atual: {participantsMissingDocument.length}
                   </p>
                   {filteredParticipants.length === 0 ? (
-                    <p className="text-sm text-[#b8bfd1]">Nenhum participante disponivel para conferência de documentos.</p>
+                    <p className="text-sm theme-muted">Nenhum participante disponivel para conferência de documentos.</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b-2 border-[#2f61ff] bg-[#0f1117]">
-                            <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide">Nome</th>
-                            <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide">CPF</th>
-                            <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide hidden md:table-cell">Email</th>
-                            <th className="px-4 py-3 text-left text-[#2f61ff] font-bold uppercase tracking-wide">Situacao</th>
+                          <tr className="border-b-2 border-blue-500 bg-slate-50 dark:bg-slate-900">
+                            <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Nome</th>
+                            <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">CPF</th>
+                            <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide hidden md:table-cell">Email</th>
+                            <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Situacao</th>
                           </tr>
                         </thead>
                         <tbody>
                           {filteredParticipants.map((participant, index) => (
                             <tr
                               key={`document-${participant.id}`}
-                              className={`${index % 2 === 0 ? "bg-[#0f1117]" : "bg-[#1a1d24]"} border-b border-[#34394a]`}
+                              className={`${index % 2 === 0 ? "bg-slate-50 dark:bg-slate-900" : "bg-white dark:bg-slate-800"} border-b border-slate-200 dark:border-slate-700`}
                             >
-                              <td className="px-4 py-3 text-sm font-semibold text-[#d3d8e4]">{participant.name}</td>
-                              <td className="px-4 py-3 text-sm text-[#9ba2b3]">{participant.cpf || "-"}</td>
-                              <td className="px-4 py-3 text-sm text-[#9ba2b3] hidden md:table-cell">{participant.email}</td>
+                              <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200">{participant.name}</td>
+                              <td className="px-4 py-3 text-sm theme-muted">{participant.cpf || "-"}</td>
+                              <td className="px-4 py-3 text-sm theme-muted hidden md:table-cell">{participant.email}</td>
                               <td className="px-4 py-3 text-sm">
                                 <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                                  participant.cpf ? "bg-[#1d6a3f] text-[#ddf7e7]" : "bg-[#6a3f1d] text-[#ffc9a3]"
+                                  participant.cpf ? "bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300" : "bg-amber-50 dark:bg-amber-900 text-amber-700 dark:text-amber-300"
                                 }`}>
                                   {participant.cpf ? "Completo" : "Pendente"}
                                 </span>
@@ -1089,51 +1360,70 @@ export default function EventDetailsPage() {
             {activeTab === "import-export" ? (
               <>
                 <section className="mb-4 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-5">
-                    <h2 className="text-lg font-semibold text-[#dbe6ff]">Exportar participantes</h2>
-                    <p className="mt-2 text-sm text-[#9ba2b3]">
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Exportar participantes</h2>
+                    <p className="mt-2 text-sm theme-muted">
                       Baixe o relatorio completo do evento em CSV com dados de cadastro e check-in.
                     </p>
                     <button
                       onClick={downloadReport}
-                      className="mt-4 inline-flex items-center gap-2 rounded-md border border-[#2f61ff] bg-[#1b2f7a] px-4 py-2 text-sm font-semibold text-[#dbe6ff] hover:bg-[#203a95]"
+                      className="mt-4 inline-flex items-center gap-2 rounded-md border border-blue-500 bg-blue-600 dark:bg-blue-900 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 dark:hover:bg-blue-800"
                     >
                       <span>Exportar CSV</span>
                     </button>
                   </div>
 
-                  <div className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-5">
-                    <h2 className="text-lg font-semibold text-[#dbe6ff]">Modelo de importacao</h2>
-                    <p className="mt-2 text-sm text-[#9ba2b3]">
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Modelo de importacao</h2>
+                    <p className="mt-2 text-sm theme-muted">
                       Baixe um modelo base para preparar planilhas de importacao de participantes.
                     </p>
                     <button
                       onClick={downloadImportTemplate}
-                      className="mt-4 inline-flex items-center gap-2 rounded-md border border-[#2f9e5f] bg-[#1d6a3f] px-4 py-2 text-sm font-semibold text-[#ddf7e7] hover:bg-[#247a4a]"
+                      className="mt-4 inline-flex items-center gap-2 rounded-md border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900 px-4 py-2 text-sm font-semibold text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-800"
                     >
                       <span>Baixar modelo CSV</span>
                     </button>
                   </div>
                 </section>
 
-                <section className="rounded-lg border border-[#2c313d] bg-[#1a1d24] p-5">
-                  <h3 className="text-sm font-semibold uppercase text-[#dbe6ff]">Importacao em lote</h3>
-                  <p className="mt-3 text-sm text-[#9ba2b3]">
-                    A importacao automatica pelo sistema ainda nao esta conectada ao backend, mas o modelo CSV ja
-                    deixa a estrutura pronta para essa proxima etapa.
+                <section className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+                  <h3 className="text-sm font-semibold uppercase text-slate-900 dark:text-white">Importacao em lote</h3>
+                  <p className="mt-3 text-sm theme-muted">
+                    Importe uma planilha CSV ou TSV com as colunas nome/name, email e cpf. As colunas telefone,
+                    instituicao, cargo, cidade, uf e categoria tambem serao adicionadas quando existirem.
                   </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <input
+                      ref={importInputRef}
+                      type="file"
+                      accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values"
+                      className="hidden"
+                      onChange={(event) => handleImportFileChange(event.target.files)}
+                    />
+                    <button
+                      onClick={openImportFilePicker}
+                      disabled={importingParticipants}
+                      className="inline-flex items-center gap-2 rounded-md border border-blue-500 bg-blue-600 dark:bg-blue-900 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 dark:hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span>{importingParticipants ? "Importando..." : "Importar participantes"}</span>
+                    </button>
+                    {importFileName ? (
+                      <span className="text-sm theme-muted">{importFileName}</span>
+                    ) : null}
+                  </div>
                   <div className="mt-4 grid gap-3 md:grid-cols-3">
-                    <div className="rounded-lg border border-[#34394a] bg-[#0f1117] p-4">
-                      <p className="text-xs uppercase tracking-wide text-[#8f96a8]">Total atual</p>
-                      <p className="mt-2 text-3xl font-bold text-[#dbe6ff]">{totalParticipants}</p>
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                      <p className="text-xs uppercase tracking-wide theme-muted">Total atual</p>
+                      <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{totalParticipants}</p>
                     </div>
-                    <div className="rounded-lg border border-[#34394a] bg-[#0f1117] p-4">
-                      <p className="text-xs uppercase tracking-wide text-[#8f96a8]">Check-ins</p>
-                      <p className="mt-2 text-3xl font-bold text-[#ddf7e7]">{checkInCount}</p>
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                      <p className="text-xs uppercase tracking-wide theme-muted">Check-ins</p>
+                      <p className="mt-2 text-3xl font-bold text-green-700 dark:text-green-300">{checkInCount}</p>
                     </div>
-                    <div className="rounded-lg border border-[#34394a] bg-[#0f1117] p-4">
-                      <p className="text-xs uppercase tracking-wide text-[#8f96a8]">Documentos completos</p>
-                      <p className="mt-2 text-3xl font-bold text-[#ffc9a3]">{participantsWithDocument}</p>
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                      <p className="text-xs uppercase tracking-wide theme-muted">Documentos completos</p>
+                      <p className="mt-2 text-3xl font-bold text-amber-700 dark:text-amber-300">{participantsWithDocument}</p>
                     </div>
                   </div>
                 </section>
