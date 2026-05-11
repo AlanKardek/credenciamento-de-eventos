@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "build": "prisma generate",
+    "start": "prisma migrate deploy && node index.js"
   },
   "keywords": [],
   "author": "",

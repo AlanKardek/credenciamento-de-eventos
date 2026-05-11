@@ -7,7 +7,7 @@ const { PrismaClient } = require('@prisma/client');
 // Configuracao base da aplicacao
 const prisma = new PrismaClient();
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 const ROLES = {
   ADMIN: 'ADMIN',
