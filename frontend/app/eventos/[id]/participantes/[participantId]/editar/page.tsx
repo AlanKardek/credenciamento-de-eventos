@@ -8,15 +8,32 @@ import { UF_OPTIONS } from "@/app/constants/uf-options";
 
 type ParticipantFormData = {
   id?: number;
+  eventId?: number;
   name?: string | null;
   email?: string | null;
   cpf?: string | null;
   phone?: string | null;
+  checkIn?: boolean;
+  checkedInAt?: string | null;
   institution?: string | null;
   jobTitle?: string | null;
   city?: string | null;
   uf?: string | null;
   category?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+type ParticipantLog = {
+  id: string;
+  action: string;
+  message?: string | null;
+  createdAt: string;
+  actor?: {
+    name?: string | null;
+    email?: string | null;
+    role?: string | null;
+  } | null;
 };
 
 // Funções de máscara
@@ -58,6 +75,10 @@ export default function EditParticipantPage() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [customCategories, setCustomCategories] = useState<CategoryOption[]>([]);
+  const [participant, setParticipant] = useState<ParticipantFormData | null>(null);
+  const [activityLogs, setActivityLogs] = useState<ParticipantLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [printingBadge, setPrintingBadge] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -111,6 +132,37 @@ export default function EditParticipantPage() {
       : []),
   ];
 
+  async function loadActivityLogs(participantIdToLoad: number, authToken = token) {
+    if (!authToken || !Number.isInteger(participantIdToLoad) || participantIdToLoad <= 0) {
+      return;
+    }
+
+    setLogsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/participants/${participantIdToLoad}/activity-logs`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        router.replace("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Não foi possível carregar os logs.");
+      }
+
+      const data = (await response.json()) as { participant: ParticipantFormData; logs: ParticipantLog[] };
+      setParticipant(data.participant);
+      setActivityLogs(data.logs);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar logs.");
+    } finally {
+      setLogsLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!token) {
       return;
@@ -147,6 +199,7 @@ export default function EditParticipantPage() {
           }
 
           if (active) {
+            setParticipant(participant);
             setFormData({
               name: participant.name || "",
               email: participant.email || "",
@@ -158,6 +211,7 @@ export default function EditParticipantPage() {
               uf: participant.uf || "",
               category: participant.category || "PUBLICO_GERAL",
             });
+            void loadActivityLogs(participant.id!, token);
           }
 
           return;
@@ -201,6 +255,7 @@ export default function EditParticipantPage() {
         }
 
         if (active) {
+          setParticipant(participant);
           setFormData({
             name: participant.name || "",
             email: participant.email || "",
@@ -212,6 +267,9 @@ export default function EditParticipantPage() {
             uf: participant.uf || "",
             category: participant.category || "PUBLICO_GERAL",
           });
+          if (participant.id) {
+            void loadActivityLogs(participant.id, token);
+          }
         }
       } catch (err) {
         if (active) {
@@ -279,17 +337,121 @@ export default function EditParticipantPage() {
         throw new Error(errorData.error || "Erro ao atualizar participante");
       }
 
+      const updatedParticipant = (await response.json()) as ParticipantFormData;
       setSuccessMessage("Participante atualizado com sucesso!");
-
-      setTimeout(() => {
-        router.push(`/eventos/${eventId}`);
-      }, 1500);
+      setParticipant(updatedParticipant);
+      await loadActivityLogs(participantId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao atualizar participante");
     } finally {
       setSaving(false);
     }
   };
+
+  async function handlePrintBadge() {
+    setPrintingBadge(true);
+    setError("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/participants/${participantId}/print-badge`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        router.replace("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Não foi possível registrar a impressão do crachá.");
+      }
+
+      openBadgePrintWindow();
+      await loadActivityLogs(participantId);
+      setSuccessMessage("Crachá enviado para impressão.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao imprimir crachá.");
+    } finally {
+      setPrintingBadge(false);
+    }
+  }
+
+  function openBadgePrintWindow() {
+    const windowRef = window.open("", "_blank", "width=620,height=520");
+    if (!windowRef) return;
+
+    const categoryLabel =
+      categoryOptions.find((category) => category.key === formData.category)?.label ||
+      formData.category.replace(/_/g, " ");
+
+    windowRef.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>Crachá - ${formData.name}</title>
+          <style>
+            body { margin: 0; padding: 24px; font-family: Arial, sans-serif; background: #f8fafc; color: #0f172a; }
+            .badge { width: 360px; min-height: 230px; margin: 0 auto; border: 2px solid #0f172a; border-radius: 18px; background: white; padding: 22px; display: grid; grid-template-columns: 1fr 86px; gap: 16px; box-shadow: 0 18px 40px rgba(15,23,42,.16); }
+            .eyebrow { margin: 0 0 18px; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
+            h1 { margin: 0; font-size: 26px; line-height: 1.05; }
+            p { margin: 8px 0 0; font-size: 13px; color: #334155; }
+            .qr { width: 86px; height: 86px; border: 2px solid #0f172a; display: grid; place-items: center; font-weight: 800; font-size: 13px; align-self: start; }
+            .footer { grid-column: 1 / -1; border-top: 1px solid #cbd5e1; padding-top: 12px; display: flex; justify-content: space-between; font-size: 12px; color: #475569; }
+            @media print { body { background: white; } .badge { box-shadow: none; } }
+          </style>
+        </head>
+        <body>
+          <section class="badge">
+            <div>
+              <p class="eyebrow">Credenciamento</p>
+              <h1>${formData.name}</h1>
+              <p>${categoryLabel}</p>
+              <p>${formData.institution || formData.email}</p>
+            </div>
+            <div class="qr">ID ${participantId}</div>
+            <div class="footer">
+              <span>${formData.city || "Evento"}${formData.uf ? ` / ${formData.uf}` : ""}</span>
+              <span>${formData.cpf || "CPF pendente"}</span>
+            </div>
+          </section>
+          <script>window.onload = () => window.print();</script>
+        </body>
+      </html>
+    `);
+    windowRef.document.close();
+  }
+
+  function formatDateTime(value?: string | null) {
+    if (!value) return "-";
+    return new Date(value).toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function getLogLabel(action: string) {
+    const labels: Record<string, string> = {
+      CREATED: "Cadastro criado",
+      UPDATED: "Cadastro editado",
+      BADGE_PRINTED: "Crachá impresso",
+      CHECK_IN: "Check-in via QR Code",
+      UNDO_CHECK_IN: "Check-in removido",
+    };
+    return labels[action] || action;
+  }
+
+  function getLogDotClass(action: string) {
+    if (action === "CHECK_IN") return "bg-green-500";
+    if (action === "BADGE_PRINTED") return "bg-blue-500";
+    if (action === "UPDATED") return "bg-amber-500";
+    if (action === "UNDO_CHECK_IN") return "bg-red-500";
+    return "bg-slate-500";
+  }
 
   if (loading) {
     return (
@@ -303,7 +465,7 @@ export default function EditParticipantPage() {
 
   return (
     <main className="theme-page">
-      <div className="mx-auto max-w-2xl px-4 py-4 md:px-6">
+      <div className="mx-auto max-w-7xl px-4 py-4 md:px-6">
         <div className="mb-4">
           <Link
             href={`/eventos/${eventId}`}
@@ -316,8 +478,37 @@ export default function EditParticipantPage() {
         {error && <p className="theme-error-message mb-4 rounded-lg p-3 text-sm">{error}</p>}
         {successMessage && <p className="theme-success-message mb-4 rounded-lg p-3 text-sm">{successMessage}</p>}
 
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_390px]">
         <section className="theme-panel rounded-lg p-6">
-          <h1 className="mb-6 text-2xl font-semibold">Editar Participante</h1>
+          <div className="mb-6 border-b border-slate-200 pb-4 dark:border-slate-700">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="h-6 w-6 rounded-full border-4 border-slate-700 bg-black dark:border-slate-600" />
+                <h1 className="border-b border-current text-2xl font-semibold">Participante</h1>
+              </div>
+              <span className={`rounded-full px-4 py-1 text-sm font-semibold ${
+                participant?.checkIn
+                  ? "border border-green-700 bg-green-950/30 text-green-600 dark:text-green-300"
+                  : "border border-amber-700 bg-amber-950/20 text-amber-600 dark:text-amber-300"
+              }`}>
+                {participant?.checkIn ? "CONFIRMADO" : "PENDENTE"}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-5">
+              <div>
+                <p className="theme-muted text-xs">Check-in</p>
+                <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  participant?.checkIn ? "bg-green-600 text-white" : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+                }`}>
+                  {participant?.checkIn ? "SIM" : "NÃO"}
+                </span>
+              </div>
+              <InfoMetric label="Código" value={participant?.id ? String(participant.id).padStart(6, "0").toUpperCase() : "-"} />
+              <InfoMetric label="Tipo" value="IMPORTADO" />
+              <InfoMetric label="Criado em" value={formatDateTime(participant?.createdAt)} />
+              <InfoMetric label="Atualizado em" value={formatDateTime(participant?.updatedAt)} />
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -489,8 +680,59 @@ export default function EditParticipantPage() {
             </div>
           </form>
         </section>
+        <aside className="space-y-6">
+          <section className="theme-panel rounded-lg p-6">
+            <h2 className="text-lg font-semibold">Imprimir</h2>
+            <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={handlePrintBadge}
+                disabled={printingBadge}
+                className="w-full rounded-md border border-blue-500 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-blue-300 dark:hover:bg-blue-950"
+              >
+                {printingBadge ? "Enviando..." : "▣ Reimprimir Crachá"}
+              </button>
+            </div>
+          </section>
+
+          <section className="theme-panel rounded-lg p-6">
+            <h2 className="text-lg font-semibold">Logs</h2>
+            <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+              {logsLoading ? (
+                <p className="text-sm theme-muted">Carregando logs...</p>
+              ) : activityLogs.length === 0 ? (
+                <p className="text-sm theme-muted">Nenhum log registrado.</p>
+              ) : (
+                <div className="space-y-4">
+                  {activityLogs.map((log) => (
+                    <article key={log.id} className="flex gap-3">
+                      <span className={`mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full ${getLogDotClass(log.action)}`} />
+                      <div>
+                        <p className="text-sm font-semibold">{getLogLabel(log.action)}</p>
+                        <p className="text-xs theme-muted">{log.message || "Registro operacional do participante."}</p>
+                        <p className="mt-1 text-xs theme-muted">
+                          {formatDateTime(log.createdAt)}
+                          {log.actor?.name ? ` · ${log.actor.name}` : ""}
+                        </p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </aside>
+        </div>
       </div>
     </main>
   );
 }
 
+function InfoMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="theme-muted text-xs">{label}</p>
+      <p className="mt-1 truncate text-sm font-medium">{value}</p>
+    </div>
+  );
+}

@@ -776,7 +776,17 @@ app.post('/admin/participants', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.
   await requireOwnedEvent(req, eventId, { id: true });
 
   const participant = await prisma.participant.create({
-    data: { ...participantData, eventId }
+    data: {
+      ...participantData,
+      eventId,
+      activityLogs: {
+        create: {
+          actorUserId: req.user.id,
+          action: 'CREATED',
+          message: 'Participante cadastrado manualmente.'
+        }
+      }
+    }
   });
 
   res.status(201).json(participant);
@@ -834,7 +844,17 @@ app.post('/admin/events/:id/participants/import', authenticate, authorizeRoles(R
   const createdParticipants = await prisma.$transaction(
     participantsToImport.map((participant) =>
       prisma.participant.create({
-        data: { ...participant, eventId }
+        data: {
+          ...participant,
+          eventId,
+          activityLogs: {
+            create: {
+              actorUserId: req.user.id,
+              action: 'CREATED',
+              message: 'Participante importado por planilha.'
+            }
+          }
+        }
       })
     )
   );
@@ -866,10 +886,109 @@ app.put('/admin/participants/:id', authenticate, authorizeRoles(ROLES.ADMIN, ROL
 
   const updatedParticipant = await prisma.participant.update({
     where: { id: participantId },
-    data: { name, email, cpf, phone, institution, jobTitle, city, uf, category }
+    data: {
+      name,
+      email,
+      cpf,
+      phone,
+      institution,
+      jobTitle,
+      city,
+      uf,
+      category,
+      activityLogs: {
+        create: {
+          actorUserId: req.user.id,
+          action: 'UPDATED',
+          message: 'Dados cadastrais atualizados.'
+        }
+      }
+    }
   });
 
   res.status(200).json(updatedParticipant);
+});
+
+// ADMIN/STAFF: consulta linha do tempo operacional do participante
+app.get('/admin/participants/:id/activity-logs', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
+  const participantId = parsePositiveInt(req.params.id);
+  if (!participantId) {
+    throw new HttpError(400, 'Parametro "id" invalido.');
+  }
+
+  const participant = await requireOwnedParticipant(req, participantId, {
+    id: true,
+    eventId: true,
+    name: true,
+    checkIn: true,
+    checkedInAt: true,
+    createdAt: true,
+    updatedAt: true
+  });
+
+  const [activityLogs, checkInLogs] = await Promise.all([
+    prisma.participantActivityLog.findMany({
+      where: { participantId },
+      include: { actor: { select: { id: true, name: true, email: true, role: true } } },
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.checkInLog.findMany({
+      where: { participantId },
+      include: { actor: { select: { id: true, name: true, email: true, role: true } } },
+      orderBy: { createdAt: 'desc' }
+    })
+  ]);
+
+  const logs = [
+    {
+      id: `created-${participant.id}`,
+      action: 'CREATED',
+      message: 'Cadastro do participante criado.',
+      createdAt: participant.createdAt,
+      actor: null
+    },
+    ...activityLogs.map((log) => ({
+      id: `activity-${log.id}`,
+      action: log.action,
+      message: log.message,
+      createdAt: log.createdAt,
+      actor: log.actor
+    })),
+    ...checkInLogs.map((log) => ({
+      id: `checkin-${log.id}`,
+      action: log.action,
+      message: log.action === 'CHECK_IN' ? 'Check-in realizado via QR Code.' : 'Check-in removido.',
+      createdAt: log.createdAt,
+      actor: log.actor
+    }))
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  res.status(200).json({
+    participant,
+    logs
+  });
+});
+
+// ADMIN/STAFF: registra impressao/reimpressao de cracha
+app.post('/admin/participants/:id/print-badge', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.STAFF), async (req, res) => {
+  const participantId = parsePositiveInt(req.params.id);
+  if (!participantId) {
+    throw new HttpError(400, 'Parametro "id" invalido.');
+  }
+
+  await requireOwnedParticipant(req, participantId, { id: true });
+
+  const log = await prisma.participantActivityLog.create({
+    data: {
+      participantId,
+      actorUserId: req.user.id,
+      action: 'BADGE_PRINTED',
+      message: 'Crachá enviado para impressão.'
+    },
+    include: { actor: { select: { id: true, name: true, email: true, role: true } } }
+  });
+
+  res.status(201).json(log);
 });
 
 // ADMIN/STAFF: renomeia uma categoria em todos os participantes do evento proprio

@@ -44,6 +44,7 @@ model Participant {
   eventId     Int
   event       Event        @relation(fields: [eventId], references: [id])
   checkInLogs CheckInLog[]
+  activityLogs ParticipantActivityLog[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @default(now()) @updatedAt
 
@@ -59,6 +60,7 @@ model User {
   role           String       @default("STAFF")
   ownedEvents    Event[]      @relation("OwnedEvents")
   checkInActions CheckInLog[] @relation("CheckInActor")
+  participantActivityLogs ParticipantActivityLog[] @relation("ParticipantActivityActor")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @default(now()) @updatedAt
 }
@@ -76,4 +78,18 @@ model CheckInLog {
 
   @@index([eventId, createdAt])
   @@index([participantId, createdAt])
+}
+
+model ParticipantActivityLog {
+  id            Int         @id @default(autoincrement())
+  participantId Int
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  actorUserId   Int?
+  actor         User?       @relation("ParticipantActivityActor", fields: [actorUserId], references: [id])
+  action        String
+  message       String?
+  createdAt     DateTime    @default(now())
+
+  @@index([participantId, createdAt])
+  @@index([actorUserId])
 }

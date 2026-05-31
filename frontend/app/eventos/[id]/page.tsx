@@ -763,7 +763,6 @@ export default function EventDetailsPage() {
   })();
 
   const categorySummary = [...categoryData].sort((a, b) => b.value - a.value);
-  const participantsMissingDocument = filteredParticipants.filter((participant) => !participant.cpf);
   const categoryCountMap = categoryData.reduce<Record<string, number>>((acc, item) => {
     acc[normalizeCategoryKey(item.name)] = item.value;
     return acc;
@@ -790,6 +789,173 @@ export default function EventDetailsPage() {
       })),
   ];
   const colors = ['#2f9e5f', '#2f61ff', '#ff6b6b', '#ffd93d', '#6bcf7f', '#4ecdc4', '#ff8c42', '#a78bfa'];
+  const printReadyParticipants = filteredParticipants.filter((participant) => participant.name && participant.email);
+  const certifiedParticipants = filteredParticipants.filter((participant) => participant.checkIn);
+  const documentFiles = [
+    {
+      id: "badges",
+      title: "Crachás personalizados",
+      description: "Arquivo para impressão com nome, categoria, instituição e QR visual do participante.",
+      count: printReadyParticipants.length,
+      countLabel: "crachás",
+      status: printReadyParticipants.length > 0 ? "Pronto para gerar" : "Sem participantes",
+      tone: "blue",
+    },
+    {
+      id: "certificates",
+      title: "Certificados",
+      description: "Certificados nominais para participantes com check-in confirmado no evento.",
+      count: certifiedParticipants.length,
+      countLabel: "certificados",
+      status: certifiedParticipants.length > 0 ? "Pronto para gerar" : "Aguardando check-ins",
+      tone: "green",
+    },
+    {
+      id: "agenda",
+      title: "Agenda resumida",
+      description: "Resumo executivo do evento com horário, local, organização e números principais.",
+      count: event ? 1 : 0,
+      countLabel: "arquivo",
+      status: event ? "Atualizada" : "Indisponível",
+      tone: "amber",
+    },
+    {
+      id: "attendance",
+      title: "Lista de presença",
+      description: "Lista simples para recepção, assinatura manual e conferência de dados.",
+      count: filteredParticipants.length,
+      countLabel: "linhas",
+      status: filteredParticipants.length > 0 ? "Pronto para impressão" : "Sem dados",
+      tone: "slate",
+    },
+  ];
+
+  function openPrintDocument(kind: "badges" | "certificates" | "agenda" | "attendance") {
+    if (typeof window === "undefined") return;
+
+    const eventTitle = event?.title || "Evento";
+    const eventDate = event?.date ? new Date(event.date).toLocaleDateString("pt-BR") : "Data não informada";
+    const windowRef = window.open("", "_blank", "width=980,height=720");
+    if (!windowRef) return;
+
+    const styles = `
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 28px; font-family: Arial, sans-serif; color: #0f172a; background: #fff; }
+        h1, h2, h3, p { margin: 0; }
+        .header { border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 22px; }
+        .muted { color: #64748b; font-size: 12px; }
+        .grid { display: grid; gap: 12px; }
+        .badges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .badge { min-height: 156px; border: 1px solid #cbd5e1; border-radius: 14px; padding: 18px; display: grid; grid-template-columns: 1fr 72px; gap: 12px; page-break-inside: avoid; }
+        .qr { width: 72px; height: 72px; border: 2px solid #0f172a; display: grid; place-items: center; font-weight: 700; }
+        .certificate { min-height: 520px; border: 4px double #0f172a; padding: 54px; text-align: center; display: grid; align-content: center; page-break-after: always; }
+        .certificate h2 { font-size: 42px; margin-bottom: 32px; }
+        .certificate .name { font-size: 34px; font-weight: 700; margin: 28px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+        th { background: #f1f5f9; }
+        .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
+        .box { border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; }
+        @media print { body { padding: 18px; } button { display: none; } }
+      </style>
+    `;
+
+    const participantsRows = filteredParticipants
+      .map(
+        (participant) => `
+          <tr>
+            <td>${participant.name}</td>
+            <td>${participant.email}</td>
+            <td>${participant.cpf || "-"}</td>
+            <td>${formatCategoryLabel(participant.category || "PUBLICO_GERAL")}</td>
+            <td></td>
+          </tr>
+        `
+      )
+      .join("");
+
+    const badges = printReadyParticipants
+      .map(
+        (participant) => `
+          <article class="badge">
+            <div>
+              <p class="muted">${eventTitle}</p>
+              <h2>${participant.name}</h2>
+              <p>${formatCategoryLabel(participant.category || "PUBLICO_GERAL")}</p>
+              <p class="muted">${participant.institution || participant.email}</p>
+            </div>
+            <div class="qr">ID ${participant.id}</div>
+          </article>
+        `
+      )
+      .join("");
+
+    const certificates = certifiedParticipants
+      .map(
+        (participant) => `
+          <section class="certificate">
+            <h2>Certificado</h2>
+            <p>Certificamos que</p>
+            <p class="name">${participant.name}</p>
+            <p>participou do evento <strong>${eventTitle}</strong>, realizado em ${eventDate}.</p>
+            <p style="margin-top: 42px" class="muted">${event?.organizer || "Organização do evento"}</p>
+          </section>
+        `
+      )
+      .join("");
+
+    const agenda = `
+      <section>
+        <h2>Agenda resumida</h2>
+        <div class="summary">
+          <div class="box"><p class="muted">Data</p><h3>${eventDate}</h3></div>
+          <div class="box"><p class="muted">Horário</p><h3>${event?.eventStart || "--"} - ${event?.eventEnd || "--"}</h3></div>
+          <div class="box"><p class="muted">Participantes</p><h3>${totalParticipants}</h3></div>
+          <div class="box"><p class="muted">Check-ins</p><h3>${checkInCount}</h3></div>
+        </div>
+        <div class="box" style="margin-top: 18px">
+          <p class="muted">Local</p>
+          <h3>${event?.location || "Local não informado"}</h3>
+        </div>
+        <div class="box" style="margin-top: 18px">
+          <p class="muted">Descrição</p>
+          <p>${event?.description || "Sem descrição cadastrada."}</p>
+        </div>
+      </section>
+    `;
+
+    const attendance = `
+      <table>
+        <thead><tr><th>Nome</th><th>Email</th><th>CPF</th><th>Categoria</th><th>Assinatura</th></tr></thead>
+        <tbody>${participantsRows}</tbody>
+      </table>
+    `;
+
+    const contentByKind = {
+      badges: `<div class="grid badges">${badges || "<p>Nenhum crachá disponível.</p>"}</div>`,
+      certificates: certificates || "<p>Nenhum certificado disponível. Confirme check-ins primeiro.</p>",
+      agenda,
+      attendance,
+    };
+
+    windowRef.document.write(`
+      <!doctype html>
+      <html>
+        <head><title>${eventTitle} - documento</title>${styles}</head>
+        <body>
+          <div class="header">
+            <p class="muted">Central de documentos</p>
+            <h1>${eventTitle}</h1>
+            <p>${eventDate} · ${event?.location || "Local não informado"}</p>
+          </div>
+          ${contentByKind[kind]}
+          <script>window.onload = () => window.print();</script>
+        </body>
+      </html>
+    `);
+    windowRef.document.close();
+  }
 
   const LineChart = ({ data }: { data: typeof timelineData }) => {
     if (data.length === 0) return null;
@@ -1298,61 +1464,145 @@ export default function EventDetailsPage() {
 
             {activeTab === "document" ? (
               <>
-                <section className="mb-4 grid gap-3 md:grid-cols-3">
-                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-                    <p className="theme-muted uppercase tracking-wide text-xs mb-2">Documentos preenchidos</p>
-                    <p className="text-4xl font-bold text-green-700 dark:text-green-300">{participantsWithDocument}</p>
+                <section className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+                  <div className="grid gap-4 border-b border-slate-200 p-4 dark:border-slate-700 lg:grid-cols-[1fr_auto]">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                        Central de documentos
+                      </p>
+                      <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+                        Arquivos do evento para impressão
+                      </h2>
+                      <p className="mt-2 max-w-3xl text-sm leading-6 theme-muted">
+                        Gere e acompanhe crachás personalizados, certificados, agenda resumida e listas de apoio para a operação do evento.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 rounded-lg bg-slate-50 p-2 dark:bg-slate-900">
+                      <div className="min-w-24 rounded-md bg-white p-3 text-center dark:bg-slate-800">
+                        <p className="text-xs theme-muted">CPF</p>
+                        <p className="text-xl font-bold text-green-700 dark:text-green-300">{documentCompletion}%</p>
+                      </div>
+                      <div className="min-w-24 rounded-md bg-white p-3 text-center dark:bg-slate-800">
+                        <p className="text-xs theme-muted">Check-ins</p>
+                        <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{checkInCount}</p>
+                      </div>
+                      <div className="min-w-24 rounded-md bg-white p-3 text-center dark:bg-slate-800">
+                        <p className="text-xs theme-muted">Pendências</p>
+                        <p className="text-xl font-bold text-amber-700 dark:text-amber-300">{participantsWithoutDocument}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-                    <p className="theme-muted uppercase tracking-wide text-xs mb-2">Pendentes</p>
-                    <p className="text-4xl font-bold text-amber-700 dark:text-amber-300">{participantsWithoutDocument}</p>
-                  </div>
-                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-                    <p className="theme-muted uppercase tracking-wide text-xs mb-2">Conclusão</p>
-                    <p className="text-4xl font-bold text-slate-900 dark:text-white">{documentCompletion}%</p>
+
+                  <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+                    {documentFiles.map((file) => (
+                      <article
+                        key={file.id}
+                        className="flex min-h-56 flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900"
+                      >
+                        <div>
+                          <div className="mb-4 flex items-start justify-between gap-3">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                file.tone === "green"
+                                  ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
+                                  : file.tone === "amber"
+                                    ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                                    : file.tone === "blue"
+                                      ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                                      : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                              }`}
+                            >
+                              {file.status}
+                            </span>
+                            <span className="text-right">
+                              <strong className="block text-2xl text-slate-900 dark:text-white">{file.count}</strong>
+                              <small className="theme-muted">{file.countLabel}</small>
+                            </span>
+                          </div>
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{file.title}</h3>
+                          <p className="mt-2 text-sm leading-6 theme-muted">{file.description}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openPrintDocument(file.id as "badges" | "certificates" | "agenda" | "attendance")}
+                          className="mt-5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-500 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          Gerar impressão
+                        </button>
+                      </article>
+                    ))}
                   </div>
                 </section>
 
-                <section className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-                  <h2 className="mb-4 text-lg font-semibold uppercase">Controle de documentos</h2>
-                  <p className="mb-4 text-sm theme-muted">
-                    Pendencias no filtro atual: {participantsMissingDocument.length}
-                  </p>
-                  {filteredParticipants.length === 0 ? (
-                    <p className="text-sm theme-muted">Nenhum participante disponível para conferência de documentos.</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b-2 border-blue-500 bg-slate-50 dark:bg-slate-900">
-                            <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Nome</th>
-                            <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">CPF</th>
-                            <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide hidden md:table-cell">Email</th>
-                            <th className="px-4 py-3 text-left text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Situação</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredParticipants.map((participant, index) => (
-                            <tr
-                              key={`document-${participant.id}`}
-                              className={`${index % 2 === 0 ? "bg-slate-50 dark:bg-slate-900" : "bg-white dark:bg-slate-800"} border-b border-slate-200 dark:border-slate-700`}
-                            >
-                              <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200">{participant.name}</td>
-                              <td className="px-4 py-3 text-sm theme-muted">{participant.cpf || "-"}</td>
-                              <td className="px-4 py-3 text-sm theme-muted hidden md:table-cell">{participant.email}</td>
-                              <td className="px-4 py-3 text-sm">
-                                <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                                  participant.cpf ? "bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300" : "bg-amber-50 dark:bg-amber-900 text-amber-700 dark:text-amber-300"
-                                }`}>
-                                  {participant.cpf ? "Completo" : "Pendente"}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                <section className="mb-4 grid gap-4 lg:grid-cols-[1fr_340px]">
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Preparação para impressão</h2>
+                        <p className="mt-1 text-sm theme-muted">
+                          Conferência do filtro atual antes de gerar crachás, certificados e listas.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={downloadReport}
+                        className="rounded-md border border-blue-500 bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                      >
+                        Exportar dados
+                      </button>
                     </div>
-                  )}
+
+                    {filteredParticipants.length === 0 ? (
+                      <p className="text-sm theme-muted">Nenhum participante disponível para gerar documentos.</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[760px]">
+                          <thead>
+                            <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+                              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Participante</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Categoria</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Crachá</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Certificado</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Dados</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredParticipants.map((participant) => (
+                              <tr key={`document-${participant.id}`} className="border-b border-slate-100 last:border-b-0 dark:border-slate-700">
+                                <td className="px-4 py-3">
+                                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{participant.name}</p>
+                                  <p className="text-xs theme-muted">{participant.email}</p>
+                                </td>
+                                <td className="px-4 py-3 text-sm theme-muted">{formatCategoryLabel(participant.category || "PUBLICO_GERAL")}</td>
+                                <td className="px-4 py-3">
+                                  <StatusPill ok={Boolean(participant.name && participant.email)} label={participant.name && participant.email ? "Pronto" : "Revisar"} />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <StatusPill ok={participant.checkIn} label={participant.checkIn ? "Liberado" : "Sem check-in"} />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <StatusPill ok={Boolean(participant.cpf)} label={participant.cpf ? "CPF ok" : "CPF pendente"} />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <aside className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                    <h3 className="text-sm font-semibold uppercase text-slate-900 dark:text-white">Checklist operacional</h3>
+                    <div className="mt-4 space-y-3">
+                      <ChecklistItem done={totalParticipants > 0} text="Participantes cadastrados" detail={`${totalParticipants} no evento`} />
+                      <ChecklistItem done={participantsWithoutDocument === 0 && totalParticipants > 0} text="CPFs conferidos" detail={`${participantsWithoutDocument} pendentes`} />
+                      <ChecklistItem done={checkInCount > 0} text="Certificados liberados" detail={`${checkInCount} com check-in`} />
+                      <ChecklistItem done={Boolean(event?.eventStart && event?.eventEnd && event?.location)} text="Agenda completa" detail={event?.location || "Local pendente"} />
+                    </div>
+                    <div className="mt-5 rounded-lg bg-slate-50 p-3 text-sm leading-6 theme-muted dark:bg-slate-900">
+                      Use os filtros da aba de participantes para gerar arquivos por categoria, cidade ou situação específica.
+                    </div>
+                  </aside>
                 </section>
               </>
             ) : null}
@@ -1437,6 +1687,36 @@ export default function EventDetailsPage() {
   );
 }
 
+function StatusPill({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+        ok
+          ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+          : "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
 
+function ChecklistItem({ done, text, detail }: { done: boolean; text: string; detail: string }) {
+  return (
+    <div className="flex gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+      <span
+        className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+          done ? "bg-green-600 text-white" : "bg-slate-300 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+        }`}
+      >
+        {done ? "✓" : "!"}
+      </span>
+      <div>
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{text}</p>
+        <p className="text-xs theme-muted">{detail}</p>
+      </div>
+    </div>
+  );
+}
 
 
